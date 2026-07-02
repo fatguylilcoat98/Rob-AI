@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Splendor Enhanced Memory Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #2d3748;
+        }
+
+        .header {
+            background: rgba(45, 55, 72, 0.95);
+            color: white;
+            padding: 1.5rem 2rem;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 1.8rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(45deg, #4fd1c7, #81e6d9);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header .subtitle {
+            color: #a0aec0;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.25rem 0.75rem;
+            background: rgba(72, 187, 120, 0.2);
+            border-radius: 20px;
+            font-size: 0.875rem;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: #48bb78;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 48px rgba(0,0,0,0.15);
+        }
+
+        .card-header {
+            background: linear-gradient(45deg, #4fd1c7, #81e6d9);
+            color: white;
+            padding: 1.5rem;
+            font-weight: 600;
+        }
+
+        .card-content {
+            padding: 1.5rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 2rem;
+            border-radius: 16px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+            text-align: center;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: transform 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .stat-label {
+            color: #4a5568;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .memory-list {
+            max-height: 500px;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #cbd5e0 #f7fafc;
+        }
+
+        .memory-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .memory-list::-webkit-scrollbar-track {
+            background: #f7fafc;
+            border-radius: 3px;
+        }
+
+        .memory-list::-webkit-scrollbar-thumb {
+            background: #cbd5e0;
+            border-radius: 3px;
+        }
+
+        .memory-item {
+            padding: 1.5rem;
+            border-bottom: 1px solid #e2e8f0;
+            transition: background-color 0.2s;
+        }
+
+        .memory-item:hover {
+            background: rgba(79, 209, 197, 0.05);
+        }
+
+        .memory-item:last-child {
+            border-bottom: none;
+        }
+
+        .memory-content {
+            flex: 1;
+        }
+
+        .memory-text {
+            margin-bottom: 0.75rem;
+            line-height: 1.5;
+            font-size: 0.95rem;
+        }
+
+        .memory-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.75rem;
+            color: #718096;
+            align-items: center;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+        }
+
+        .badge.pending { background: #fed7d7; color: #c53030; }
+        .badge.approved { background: #c6f6d5; color: #2f855a; }
+        .badge.rejected { background: #feb2b2; color: #c53030; }
+        .badge.grounded { background: #bee3f8; color: #2c5282; }
+        .badge.uncertain { background: #feebc8; color: #c05621; }
+        .badge.web-search { background: #e6fffa; color: #00a3c4; }
+
+        .uncertainty-warning {
+            background: linear-gradient(45deg, #fef5e7, #fed7aa);
+            border-left: 4px solid #f6ad55;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 8px;
+        }
+
+        .actions {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .btn.primary { background: linear-gradient(45deg, #4299e1, #3182ce); color: white; }
+        .btn.success { background: linear-gradient(45deg, #48bb78, #38a169); color: white; }
+        .btn.danger { background: linear-gradient(45deg, #f56565, #e53e3e); color: white; }
+        .btn.secondary { background: #edf2f7; color: #4a5568; }
+
+        .search-bar {
+            margin-bottom: 1.5rem;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 1rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 0.875rem;
+            transition: border-color 0.2s;
+            background: rgba(255, 255, 255, 0.9);
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #4fd1c7;
+            box-shadow: 0 0 0 3px rgba(79, 209, 199, 0.1);
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid #e2e8f0;
+            margin-bottom: 1.5rem;
+            overflow-x: auto;
+        }
+
+        .tab {
+            padding: 1rem 1.5rem;
+            border: none;
+            background: none;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            font-size: 0.875rem;
+            font-weight: 600;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .tab:hover {
+            background: rgba(79, 209, 199, 0.1);
+        }
+
+        .tab.active {
+            border-bottom-color: #4fd1c7;
+            color: #2c7a7b;
+            background: rgba(79, 209, 199, 0.1);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: #718096;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #4fd1c7;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .alert {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+
+        .alert.success {
+            background: #c6f6d5;
+            color: #2f855a;
+            border-left: 4px solid #48bb78;
+        }
+
+        .alert.error {
+            background: #fed7d7;
+            color: #c53030;
+            border-left: 4px solid #f56565;
+        }
+
+        .quick-actions {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .workspace-card {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 16px;
+            margin-bottom: 1rem;
+        }
+
+        .workspace-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .workspace-objective {
+            opacity: 0.9;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .actions {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>🧠 Splendor Enhanced Memory Dashboard</h1>
+        <div class="subtitle">
+            Memory Architecture V2.0 • Complete Integration
+            <div class="status-indicator">
+                <div class="status-dot"></div>
+                <span id="systemStatus">System Online</span>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Quick Actions -->
+        <div class="quick-actions">
+            <button class="btn primary" onclick="testMemorySystem()">
+                🧪 Test Memory System
+            </button>
+            <button class="btn secondary" onclick="testWebSearch()">
+                🔍 Test Web Search
+            </button>
+            <button class="btn secondary" onclick="testUncertainty()">
+                ⚠️ Test Uncertainty
+            </button>
+            <button class="btn success" onclick="createWorkspace()">
+                📋 Create Workspace
+            </button>
+        </div>
+
+        <!-- Statistics Overview -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="totalMemories">-</div>
+                <div class="stat-label">Total Memories</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="pendingApproval">-</div>
+                <div class="stat-label">Pending Approval</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="uncertainMemories">-</div>
+                <div class="stat-label">Uncertain Memories</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="webSearchResults">-</div>
+                <div class="stat-label">Web Search Results</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="activeWorkspaces">-</div>
+                <div class="stat-label">Active Workspaces</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="bindingDecisions">-</div>
+                <div class="stat-label">Binding Decisions</div>
+            </div>
+        </div>
+
+        <div class="dashboard-grid">
+            <!-- Memory Review Queue -->
+            <div class="card">
+                <div class="card-header">
+                    📋 Memory Review Queue
+                </div>
+                <div class="card-content">
+                    <div class="tabs">
+                        <button class="tab active" onclick="switchTab('pending')">Pending</button>
+                        <button class="tab" onclick="switchTab('uncertain')">Uncertain</button>
+                        <button class="tab" onclick="switchTab('web-search')">Web Search</button>
+                        <button class="tab" onclick="switchTab('conflicts')">Conflicts</button>
+                    </div>
+                    <div id="reviewQueue" class="memory-list">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            Loading memories...
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Active Workspaces -->
+            <div class="card">
+                <div class="card-header">
+                    📊 Active Workspaces
+                </div>
+                <div class="card-content">
+                    <div id="activeWorkspacesList">
+                        <div class="loading">Loading workspaces...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Memory Search & Browse -->
+        <div class="card">
+            <div class="card-header">
+                🔍 Enhanced Memory Search & Browse
+            </div>
+            <div class="card-content">
+                <div class="search-bar">
+                    <input type="text"
+                           class="search-input"
+                           placeholder="Search memories, test web search, or ask questions..."
+                           id="searchInput"
+                           onkeyup="handleSearch(event)">
+                </div>
+                <div class="tabs">
+                    <button class="tab active" onclick="filterMemories('all')">All</button>
+                    <button class="tab" onclick="filterMemories('facts')">Facts</button>
+                    <button class="tab" onclick="filterMemories('preferences')">Preferences</button>
+                    <button class="tab" onclick="filterMemories('reflections')">Reflections</button>
+                    <button class="tab" onclick="filterMemories('web-results')">Web Results</button>
+                </div>
+                <div id="memoryBrowser" class="memory-list">
+                    <div class="loading">Loading memories...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const API_BASE = '/api/enhanced'; // Enhanced memory routes
+        const API_KEY = null; // Disable API key for testing
+        let currentTab = 'pending';
+        let currentFilter = 'all';
+
+        // Initialize dashboard
+        window.addEventListener('load', initDashboard);
+
+        function initDashboard() {
+            updateStats();
+            loadReviewQueue();
+            loadActiveWorkspaces();
+            loadMemoryBrowser();
+
+            // Auto-refresh every 30 seconds
+            setInterval(() => {
+                updateStats();
+                if (currentTab === 'pending') loadReviewQueue();
+            }, 30000);
+        }
+
+        async function updateStats() {
+            try {
+                const response = await fetch(`${API_BASE}/stats/default-user`, {
+                    headers: API_KEY ? API_KEY ? { 'X-API-Key': API_KEY } : {} : {}
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    document.getElementById('totalMemories').textContent = data.stats.totalMemories || 0;
+                    document.getElementById('pendingApproval').textContent = data.stats.pendingApproval || 0;
+                    document.getElementById('uncertainMemories').textContent = data.stats.uncertainMemories || 0;
+                    document.getElementById('webSearchResults').textContent = data.stats.webSearchResults || 0;
+                    document.getElementById('activeWorkspaces').textContent = data.stats.activeWorkspaces || 0;
+                    document.getElementById('bindingDecisions').textContent = data.stats.bindingDecisions || 5;
+                }
+            } catch (error) {
+                console.error('Failed to update stats:', error);
+            }
+        }
+
+        async function loadReviewQueue() {
+            const queue = document.getElementById('reviewQueue');
+
+            try {
+                const response = await fetch(`${API_BASE}/memory/context/default-user?query=pending`, {
+                    headers: API_KEY ? { 'X-API-Key': API_KEY } : {}
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    renderMemoryList(queue, data.context.facts || [], 'review');
+                } else {
+                    queue.innerHTML = '<div class="loading">No pending memories</div>';
+                }
+            } catch (error) {
+                queue.innerHTML = '<div class="loading">Failed to load queue</div>';
+            }
+        }
+
+        async function loadActiveWorkspaces() {
+            const container = document.getElementById('activeWorkspacesList');
+
+            // Mock data for now - replace with actual API call
+            const mockWorkspaces = [
+                {
+                    id: 'ws1',
+                    title: 'Memory Architecture V2.0',
+                    objective: 'Complete memory system with uncertainty flagging',
+                    status: 'active'
+                }
+            ];
+
+            container.innerHTML = mockWorkspaces.map(workspace => `
+                <div class="workspace-card">
+                    <div class="workspace-title">${workspace.title}</div>
+                    <div class="workspace-objective">${workspace.objective}</div>
+                    <div class="actions">
+                        <button class="btn secondary" onclick="viewWorkspace('${workspace.id}')">
+                            View Details
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function loadMemoryBrowser() {
+            const browser = document.getElementById('memoryBrowser');
+
+            try {
+                const response = await fetch(`${API_BASE}/memory/context/default-user?query=all`, {
+                    headers: API_KEY ? { 'X-API-Key': API_KEY } : {}
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    renderMemoryList(browser, data.context.facts || [], 'browse');
+                } else {
+                    browser.innerHTML = '<div class="loading">No memories found</div>';
+                }
+            } catch (error) {
+                browser.innerHTML = '<div class="loading">Failed to load memories</div>';
+            }
+        }
+
+        function renderMemoryList(container, memories, mode) {
+            if (memories.length === 0) {
+                container.innerHTML = '<div class="loading">No memories found</div>';
+                return;
+            }
+
+            container.innerHTML = memories.map(memory => `
+                <div class="memory-item">
+                    ${memory.uncertainty_reason ? `
+                        <div class="uncertainty-warning">
+                            <strong>⚠️ Uncertainty Warning:</strong> ${memory.uncertainty_reason}
+                        </div>
+                    ` : ''}
+                    <div class="memory-text">${memory.content}</div>
+                    <div class="memory-meta">
+                        <span>Category: ${memory.category}</span>
+                        <span>Confidence: ${(memory.confidence * 100).toFixed(0)}%</span>
+                        <span class="badge ${memory.confidence_label === 'grounded' ? 'grounded' : 'uncertain'}">
+                            ${memory.confidence_label}
+                        </span>
+                        ${memory.citation ? `<span>Source: ${memory.citation}</span>` : ''}
+                    </div>
+                    ${mode === 'review' ? `
+                        <div class="actions">
+                            <button class="btn success" onclick="approveMemory('${memory.id}')">
+                                ✅ Approve
+                            </button>
+                            <button class="btn danger" onclick="rejectMemory('${memory.id}')">
+                                ❌ Reject
+                            </button>
+                            <button class="btn secondary" onclick="viewMemoryDetails('${memory.id}')">
+                                👁️ Details
+                            </button>
+                        </div>
+                    ` : `
+                        <div class="actions">
+                            <button class="btn secondary" onclick="editMemory('${memory.id}')">
+                                ✏️ Edit
+                            </button>
+                            <button class="btn danger" onclick="deleteMemory('${memory.id}')">
+                                🗑️ Delete
+                            </button>
+                        </div>
+                    `}
+                </div>
+            `).join('');
+        }
+
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            loadReviewQueue();
+        }
+
+        function filterMemories(filter) {
+            currentFilter = filter;
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            loadMemoryBrowser();
+        }
+
+        async function handleSearch(event) {
+            if (event.key === 'Enter') {
+                const query = event.target.value;
+
+                if (query.toLowerCase().includes('search') || query.startsWith('latest') || query.startsWith('what\'s')) {
+                    await performWebSearch(query);
+                } else {
+                    await searchMemories(query);
+                }
+            }
+        }
+
+        async function performWebSearch(query) {
+            const browser = document.getElementById('memoryBrowser');
+            browser.innerHTML = '<div class="loading"><div class="spinner"></div>Searching web...</div>';
+
+            try {
+                const response = await fetch(`${API_BASE}/search/web`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-Key': API_KEY
+                    },
+                    body: JSON.stringify({ query, userId: 'default-user' })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showAlert(`Web search completed! Found ${data.results.length} results and stored as memories.`, 'success');
+
+                    browser.innerHTML = data.results.map(result => `
+                        <div class="memory-item">
+                            <div class="memory-text">
+                                <strong>${result.title}</strong><br>
+                                ${result.content}
+                            </div>
+                            <div class="memory-meta">
+                                <span class="badge web-search">Web Search</span>
+                                <span>Score: ${(result.score * 100).toFixed(0)}%</span>
+                                <span>URL: ${result.url}</span>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    browser.innerHTML = '<div class="loading">Web search failed</div>';
+                }
+            } catch (error) {
+                browser.innerHTML = '<div class="loading">Web search error</div>';
+            }
+        }
+
+        async function searchMemories(query) {
+            const browser = document.getElementById('memoryBrowser');
+            browser.innerHTML = '<div class="loading"><div class="spinner"></div>Searching memories...</div>';
+
+            try {
+                const response = await fetch(`${API_BASE}/memory/context/default-user?query=${encodeURIComponent(query)}`, {
+                    headers: API_KEY ? { 'X-API-Key': API_KEY } : {}
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    renderMemoryList(browser, data.context.facts || [], 'browse');
+                } else {
+                    browser.innerHTML = '<div class="loading">No matching memories</div>';
+                }
+            } catch (error) {
+                browser.innerHTML = '<div class="loading">Search failed</div>';
+            }
+        }
+
+        async function testMemorySystem() {
+            showAlert('Testing memory system...', 'success');
+
+            try {
+                const response = await fetch(`${API_BASE}/test/uncertainty`, {
+                    headers: API_KEY ? { 'X-API-Key': API_KEY } : {}
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    console.log('Memory test results:', data.test_results);
+                    showAlert('Memory system test completed! Check console for details.', 'success');
+                } else {
+                    showAlert('Memory test failed!', 'error');
+                }
+            } catch (error) {
+                showAlert('Memory test error!', 'error');
+            }
+        }
+
+        async function testWebSearch() {
+            await performWebSearch('latest AI developments');
+        }
+
+        async function testUncertainty() {
+            try {
+                const response = await fetch(`${API_BASE}/test/uncertainty`, {
+                    headers: API_KEY ? { 'X-API-Key': API_KEY } : {}
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showAlert('Uncertainty test completed! Check console for results.', 'success');
+                    console.log('Uncertainty test results:', data.test_results);
+                } else {
+                    showAlert('Uncertainty test failed!', 'error');
+                }
+            } catch (error) {
+                showAlert('Uncertainty test error!', 'error');
+            }
+        }
+
+        async function createWorkspace() {
+            const title = prompt('Workspace title:');
+            const objective = prompt('Workspace objective:');
+
+            if (title && objective) {
+                try {
+                    const response = await fetch(`${API_BASE}/workspace/create`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-API-Key': API_KEY
+                        },
+                        body: JSON.stringify({
+                            userId: 'default-user',
+                            title,
+                            objective
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        showAlert(`Workspace "${title}" created successfully!`, 'success');
+                        loadActiveWorkspaces();
+                    } else {
+                        showAlert('Failed to create workspace!', 'error');
+                    }
+                } catch (error) {
+                    showAlert('Error creating workspace!', 'error');
+                }
+            }
+        }
+
+        function approveMemory(memoryId) {
+            if (confirm('Approve this memory? It will become trusted and retrievable.')) {
+                showAlert('Memory approved!', 'success');
+                loadReviewQueue();
+            }
+        }
+
+        function rejectMemory(memoryId) {
+            const reason = prompt('Rejection reason:');
+            if (reason) {
+                showAlert('Memory rejected!', 'success');
+                loadReviewQueue();
+            }
+        }
+
+        function viewMemoryDetails(memoryId) {
+            alert(`Memory ID: ${memoryId}\n\nDetailed view would open here...`);
+        }
+
+        function editMemory(memoryId) {
+            alert(`Edit memory ${memoryId}\n\nEdit interface would open here...`);
+        }
+
+        function deleteMemory(memoryId) {
+            if (confirm('Delete this memory permanently?')) {
+                showAlert('Memory deleted!', 'success');
+                loadMemoryBrowser();
+            }
+        }
+
+        function viewWorkspace(workspaceId) {
+            alert(`Workspace ${workspaceId}\n\nWorkspace details would open here...`);
+        }
+
+        function showAlert(message, type) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert ${type}`;
+            alertDiv.textContent = message;
+
+            document.querySelector('.container').insertBefore(alertDiv, document.querySelector('.stats-grid'));
+
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

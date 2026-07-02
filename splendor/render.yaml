@@ -1,0 +1,203 @@
+# Splendor — The Remarkable AI · The Good Neighbor Guard
+# Built by Christopher Hughes · Sacramento, CA
+# Truth · Safety · We Got Your Back
+#
+# ENV VAR POLICY
+# Every service and cron gets the full credential set it needs to wake up.
+# No service runs with zero environment variables.
+# SUPABASE_SERVICE_KEY is provided to all services (bypasses RLS).
+# SUPABASE_ANON_KEY is kept on the main web service for client-side paths.
+# SPLENDOR_OWNER_USER_ID is provided to all services that read/write per-user rows.
+# SPLENDOR_OWNER_EMAIL is the owner-AUTH identity (middleware/auth.js requireOwner,
+# server.js, routes/activity.js compare it to the authenticated Supabase user's
+# email). It is distinct from SPLENDOR_OWNER_USER_ID (data-row identity) and is
+# only needed on the web service, which is the only service that gates HTTP routes.
+
+services:
+  - type: web
+    name: splendor
+    env: node
+    plan: starter
+    buildCommand: npm install && npm run build:react
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+      - key: SPLENDOR_OWNER_USER_ID
+        sync: false
+      # Owner-auth identity for requireOwner / server.js / routes/activity.js.
+      # Without it, every owner-gated route fails closed with HTTP 500.
+      - key: SPLENDOR_OWNER_EMAIL
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: PERPLEXITY_API_KEY
+        sync: false
+      - key: PINECONE_API_KEY
+        sync: false
+      - key: PINECONE_INDEX
+        value: splendor-memory
+      # Audit Item 4: Pinecone currently embeds with a word-hash (not real
+      # semantics), so its similarity is untrustworthy. Recall ranking is
+      # Supabase candidates + real OpenAI-embedding rerank. Pinecone is
+      # QUARANTINED from live ranking unless this is explicitly "true".
+      # Flip to "true" only after real embeddings replace the hash in
+      # lib/pinecone.js.
+      - key: PINECONE_RANKING_ENABLED
+        value: "false"
+      - key: TAVILY_API_KEY
+        sync: false
+      - key: ELEVENLABS_API_KEY
+        sync: false
+
+  # The Room — background reflection worker
+  - type: cron
+    name: splendor-reflection
+    env: node
+    schedule: "0 */6 * * *"   # every 6 hours
+    buildCommand: npm install
+    startCommand: node workers/reflection-worker.js
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SPLENDOR_OWNER_USER_ID
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: PERPLEXITY_API_KEY
+        sync: false
+
+  # 6-Layer Memory — daily decay (Layer 2 → Layer 4 prep)
+  - type: cron
+    name: splendor-memory-decay
+    env: node
+    schedule: "0 4 * * *"     # 04:00 UTC daily
+    buildCommand: npm install
+    startCommand: node workers/memory-decay-worker.js
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SPLENDOR_OWNER_USER_ID
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+
+  # 6-Layer Memory — compression (folds decayed episodes into summaries)
+  - type: cron
+    name: splendor-memory-compression
+    env: node
+    schedule: "30 4 * * *"    # 04:30 UTC daily, 30 min after decay
+    buildCommand: npm install
+    startCommand: node workers/memory-compression-worker.js
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SPLENDOR_OWNER_USER_ID
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+
+  # Persistent Consciousness — autonomous reflection/inquiry/comms scheduler.
+  # Long-running daemon (setInterval tasks). Drives lib/persistent-consciousness.js
+  # executeConsciousnessCycle(). Requires the SERVICE key (not anon) + Anthropic;
+  # the inquiry task uses Tavily. NOTE: type:worker needs a paid instance, and
+  # the worker hard-exits if SUPABASE_SERVICE_KEY is missing.
+  - type: worker
+    name: splendor-consciousness
+    env: node
+    plan: starter
+    buildCommand: npm install
+    startCommand: node workers/consciousness-scheduler.js
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SPLENDOR_OWNER_USER_ID
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: TAVILY_API_KEY
+        sync: false
+      # Keep consciousness emails off until an email transport is configured.
+      - key: CONSCIOUSNESS_EMAIL_ENABLED
+        value: "false"
+
+  # Master Continuity — Shadow Mode pattern detection (stages reflections for
+  # human admin review; nothing auto-surfaces). One-shot cron via wrapper.
+  - type: cron
+    name: splendor-continuity-shadow
+    env: node
+    schedule: "0 */6 * * *"   # every 6h (matches the 24h lookback window)
+    buildCommand: npm install
+    startCommand: node workers/continuity-shadow-cron.js
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SPLENDOR_OWNER_USER_ID
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+
+  # Daily Log — Splendor reviews the last 24h and emails Chris a summary.
+  # 7:00 AM Pacific = 15:00 UTC.
+  - type: cron
+    name: splendor-daily-log
+    env: node
+    schedule: "0 15 * * *"    # 15:00 UTC = 07:00 AM Pacific
+    buildCommand: npm install
+    startCommand: node workers/daily-log-worker.js
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SPLENDOR_OWNER_USER_ID
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: USER_EMAIL
+        sync: false
+      - key: PROACTIVE_EMAIL_ENABLED
+        sync: false
+      - key: EMAIL_PROVIDER
+        sync: false
+      - key: GMAIL_USER
+        sync: false
+      - key: GMAIL_APP_PASSWORD
+        sync: false
+      - key: SPLENDOR_OWNER_TIMEZONE
+        sync: false

@@ -1,0 +1,1390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Splendor — Interactive Intelligence Interface</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #050b14;
+      --bg1: rgba(8,18,34,0.92);
+      --bg2: rgba(12,24,44,0.7);
+      --c1: #00e5ff;
+      --c2: #ffd700;
+      --c3: #39ff14;
+      --c4: #ff073a;
+      --c5: #a855f7;
+      --border: rgba(0,229,255,0.16);
+      --text: #c8e8f0;
+      --text-dim: rgba(200,232,240,0.45);
+      --mono: 'IBM Plex Mono', monospace;
+      --sans: 'IBM Plex Sans', sans-serif;
+      --radius: 10px;
+      --topbar-h: 52px;
+      --bottom-h: 52px;
+    }
+    html, body { width:100%; height:100%; background:var(--bg); color:var(--text); font-family:var(--sans); font-size:13px; overflow:hidden; }
+
+    /* TOPBAR */
+    #topbar { position:fixed; top:0; left:0; right:0; z-index:200; height:var(--topbar-h); display:flex; align-items:center; gap:16px; padding:0 20px; background:rgba(5,11,20,0.96); border-bottom:1px solid var(--border); backdrop-filter:blur(16px); }
+    #tb-logo { font-family:var(--mono); font-size:13px; font-weight:500; letter-spacing:2.5px; color:var(--c1); text-shadow:0 0 18px rgba(0,229,255,0.55); white-space:nowrap; }
+    #tb-logo span { color:rgba(0,229,255,0.4); font-size:10px; letter-spacing:1px; }
+    #tb-modes { display:flex; gap:8px; flex:1; }
+    .mode-badge { padding:3px 8px; border-radius:4px; font-family:var(--mono); font-size:9px; letter-spacing:1.5px; border:1px solid; display:none; }
+    .mode-badge.visible { display:inline-block; }
+    .mode-badge.cockpit { color:var(--c2); border-color:rgba(255,215,0,0.4); background:rgba(255,215,0,0.08); }
+    .mode-badge.replay { color:var(--c3); border-color:rgba(57,255,20,0.4); background:rgba(57,255,20,0.08); }
+    #tb-status { display:flex; gap:6px; align-items:center; }
+    .sdot { width:6px; height:6px; border-radius:50%; background:#1a2a3a; transition:background .4s; }
+    .sdot.live { background:var(--c3); box-shadow:0 0 6px var(--c3); animation:dpulse 2.5s infinite; }
+    @keyframes dpulse { 0%,100%{opacity:1}50%{opacity:.4} }
+    #tb-actions { display:flex; gap:8px; margin-left:auto; }
+    .tb-btn { padding:5px 12px; border:1px solid var(--border); border-radius:5px; background:transparent; color:var(--text-dim); font-family:var(--mono); font-size:10px; letter-spacing:1px; cursor:pointer; transition:color .2s,border-color .2s; }
+    .tb-btn:hover { color:var(--c1); border-color:rgba(0,229,255,.5); }
+
+    /* MAIN */
+    #main { position:fixed; top:var(--topbar-h); bottom:var(--bottom-h); left:0; right:0; display:grid; grid-template-columns:240px 1fr 240px; overflow:hidden; }
+
+    /* SIDE PANELS */
+    .side-panel { display:flex; flex-direction:column; gap:8px; padding:10px 8px; overflow-y:auto; border-right:1px solid var(--border); scrollbar-width:thin; scrollbar-color:rgba(0,229,255,.2) transparent; }
+    #right-panel { border-right:none; border-left:1px solid var(--border); }
+    .panel { background:var(--bg1); border:1px solid var(--border); border-radius:var(--radius); padding:10px 12px; backdrop-filter:blur(12px); }
+    .panel-title { font-family:var(--mono); font-size:9px; letter-spacing:2px; color:var(--c1); margin-bottom:8px; display:flex; align-items:center; justify-content:space-between; }
+    .wired-badge { font-size:8px; letter-spacing:1px; color:var(--c3); opacity:.7; }
+    .pending-badge { font-size:8px; letter-spacing:1px; color:var(--c2); opacity:.65; }
+    .panel-item { padding:5px 6px; border-radius:4px; cursor:pointer; transition:background .15s; border:1px solid transparent; }
+    .panel-item:hover { background:rgba(0,229,255,.06); border-color:rgba(0,229,255,.15); }
+    .pil { font-family:var(--mono); font-size:10px; color:var(--text); display:flex; justify-content:space-between; align-items:center; }
+    .pil .cnt { color:var(--c1); font-size:10px; }
+    .pis { font-size:10px; color:var(--text-dim); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .pending-label { font-family:var(--mono); font-size:9px; color:rgba(255,215,0,.5); letter-spacing:1px; }
+
+    /* CENTER */
+    #center { display:flex; flex-direction:column; overflow:hidden; }
+    #constellation-wrap { position:relative; height:240px; flex-shrink:0; display:flex; align-items:center; justify-content:center; border-bottom:1px solid var(--border); background:#020912; }
+    #constellation-canvas { width:100%; height:100%; cursor:default; }
+    #node-tooltip { position:absolute; background:rgba(5,11,20,.92); border:1px solid var(--border); border-radius:6px; padding:6px 10px; font-family:var(--mono); font-size:10px; color:var(--c1); pointer-events:none; display:none; z-index:10; }
+
+    /* CHAT */
+    #chat-area { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+    #chat-messages { flex:1; overflow-y:auto; padding:12px 16px; display:flex; flex-direction:column; gap:10px; scrollbar-width:thin; scrollbar-color:rgba(0,229,255,.15) transparent; }
+    .msg { max-width:85%; padding:9px 13px; border-radius:10px; font-size:13px; line-height:1.55; }
+    .msg.user { align-self:flex-end; background:rgba(0,229,255,.1); border:1px solid rgba(0,229,255,.2); }
+    .msg.assistant { align-self:flex-start; background:rgba(12,24,44,.8); border:1px solid var(--border); }
+    .msg.snote { align-self:center; background:transparent; color:var(--text-dim); font-family:var(--mono); font-size:10px; letter-spacing:.5px; text-align:center; padding:4px; }
+    #typing-ind { align-self:flex-start; padding:8px 13px; background:rgba(12,24,44,.8); border:1px solid var(--border); border-radius:10px; display:none; }
+    .tdots span { display:inline-block; width:5px; height:5px; border-radius:50%; background:var(--c1); margin:0 1px; animation:tdot 1.2s infinite; opacity:.4; }
+    .tdots span:nth-child(2){animation-delay:.2s}.tdots span:nth-child(3){animation-delay:.4s}
+    @keyframes tdot { 0%,60%,100%{opacity:.4;transform:translateY(0)}30%{opacity:1;transform:translateY(-3px)} }
+    #chat-input-area { padding:8px 12px; border-top:1px solid var(--border); display:flex; gap:8px; align-items:flex-end; background:rgba(5,11,20,.9); }
+    #chat-input { flex:1; background:rgba(12,24,44,.7); border:1px solid var(--border); border-radius:8px; color:var(--text); font-family:var(--sans); font-size:13px; padding:8px 12px; resize:none; min-height:36px; max-height:120px; outline:none; transition:border-color .2s; }
+    #chat-input:focus { border-color:rgba(0,229,255,.45); }
+    #send-btn { padding:8px 16px; background:rgba(0,229,255,.1); border:1px solid rgba(0,229,255,.35); border-radius:8px; color:var(--c1); font-family:var(--mono); font-size:11px; letter-spacing:1px; cursor:pointer; transition:background .2s; align-self:flex-end; }
+    #send-btn:hover { background:rgba(0,229,255,.2); }
+    #send-btn:disabled { opacity:.4; cursor:not-allowed; }
+
+    /* BOTTOM BAR */
+    #bottom-bar { position:fixed; bottom:0; left:0; right:0; z-index:200; height:var(--bottom-h); display:flex; align-items:center; gap:8px; padding:0 16px; background:rgba(5,11,20,.96); border-top:1px solid var(--border); backdrop-filter:blur(16px); }
+    .action-btn { padding:6px 14px; border-radius:6px; font-family:var(--mono); font-size:10px; letter-spacing:1.5px; cursor:pointer; border:1px solid; transition:all .2s; }
+    .action-btn.primary { color:var(--c2); border-color:rgba(255,215,0,.35); background:rgba(255,215,0,.06); }
+    .action-btn.primary:hover { background:rgba(255,215,0,.14); border-color:rgba(255,215,0,.7); }
+    .action-btn.secondary { color:var(--c3); border-color:rgba(57,255,20,.3); background:rgba(57,255,20,.05); }
+    .action-btn.secondary:hover { background:rgba(57,255,20,.12); border-color:rgba(57,255,20,.6); }
+    .action-btn.neutral { color:var(--text-dim); border-color:var(--border); background:transparent; }
+    .action-btn.neutral:hover { color:var(--text); border-color:rgba(0,229,255,.35); }
+    .action-btn:disabled { opacity:.35; cursor:not-allowed; pointer-events:none; }
+
+    /* CONVERSATION MODE — side panels collapse, constellation shrinks, chat expands */
+    #main               { transition: grid-template-columns .28s cubic-bezier(.4,0,.2,1); }
+    #constellation-wrap { transition: height .28s cubic-bezier(.4,0,.2,1); }
+    .side-panel         { transition: opacity .18s ease; }
+    body.converse-mode #main               { grid-template-columns: 0 1fr 0; }
+    body.converse-mode .side-panel         { overflow: hidden; opacity: 0; pointer-events: none; }
+    body.converse-mode #constellation-wrap { height: 80px; }
+    body.converse-mode .msg                { max-width: 66%; }
+    body.converse-mode #btn-converse       { color: var(--c1); border-color: rgba(0,229,255,.55); background: rgba(0,229,255,.1); }
+    #bb-spacer { flex:1; }
+
+    /* OVERLAYS */
+    .overlay { position:fixed; inset:0; z-index:300; display:flex; flex-direction:column; background:var(--bg); transition:transform .35s cubic-bezier(.4,0,.2,1),opacity .35s; }
+    .overlay.hidden { transform:translateY(100%); opacity:0; pointer-events:none; }
+
+    /* CLASPION OVERLAY */
+    #claspion-overlay { background:linear-gradient(160deg,#030810 0%,#050b14 100%); }
+    #cl-topbar { height:var(--topbar-h); display:flex; align-items:center; padding:0 20px; border-bottom:1px solid rgba(255,215,0,.25); flex-shrink:0; }
+    #cl-title { font-family:var(--mono); font-size:12px; letter-spacing:3px; color:var(--c2); text-shadow:0 0 16px rgba(255,215,0,.5); }
+    #cl-sub { font-family:var(--mono); font-size:9px; letter-spacing:1.5px; color:rgba(255,215,0,.5); margin-left:12px; }
+    #cl-return { margin-left:auto; padding:5px 14px; border:1px solid rgba(0,229,255,.4); border-radius:5px; background:transparent; color:var(--c1); font-family:var(--mono); font-size:10px; letter-spacing:1px; cursor:pointer; }
+    #cl-return:hover { background:rgba(0,229,255,.1); }
+    #cl-body { flex:1; display:grid; grid-template-columns:26% 1fr 26%; overflow:hidden; border-bottom:1px solid rgba(255,215,0,.15); }
+    .cl-col { padding:16px 14px; overflow-y:auto; border-right:1px solid rgba(255,215,0,.12); }
+    .cl-col:last-child { border-right:none; }
+    .cl-col-title { font-family:var(--mono); font-size:9px; letter-spacing:2.5px; color:var(--c2); margin-bottom:12px; opacity:.8; }
+    #cl-core { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; }
+    #cl-badge-wrap { position:relative; width:140px; height:140px; display:flex; align-items:center; justify-content:center; }
+    #cl-badge { position:absolute; width:120px; height:120px; clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%); background:#050b14; display:flex; align-items:center; justify-content:center; z-index:2; }
+    .cl-ring { position:absolute; border-radius:50%; border:1px solid; animation:rspin 4s linear infinite; }
+    .cl-ring-1 { width:130px; height:130px; border-color:rgba(255,215,0,.3); }
+    .cl-ring-2 { width:118px; height:118px; border-color:rgba(255,215,0,.15); animation-direction:reverse; animation-duration:6s; }
+    @keyframes rspin { to{transform:rotate(360deg)} }
+    #cl-decision-text { font-family:var(--mono); font-size:13px; font-weight:500; letter-spacing:1px; text-align:center; }
+    #cl-confidence { font-family:var(--mono); font-size:10px; color:var(--text-dim); text-align:center; }
+    .cl-ev-item { margin-bottom:8px; padding:8px 10px; border-radius:6px; border:1px solid rgba(255,215,0,.12); background:rgba(10,18,34,.6); }
+    .cl-ev-key { font-family:var(--mono); font-size:9px; letter-spacing:1.5px; color:var(--c2); margin-bottom:4px; opacity:.7; }
+    .cl-ev-val { font-family:var(--mono); font-size:11px; color:var(--text); word-break:break-word; }
+    .cl-rule { margin-bottom:8px; padding:8px 10px; border-radius:6px; border:1px solid rgba(255,215,0,.12); background:rgba(10,18,34,.6); }
+    .cl-rule-id { font-family:var(--mono); font-size:9px; color:var(--c2); opacity:.7; margin-bottom:3px; }
+    .cl-rule-text { font-size:10px; color:var(--text-dim); line-height:1.4; }
+    #cl-timeline { height:72px; display:flex; align-items:center; padding:0 20px; overflow-x:auto; border-bottom:1px solid rgba(255,215,0,.12); scrollbar-width:thin; }
+    .cl-stage { display:flex; flex-direction:column; align-items:center; min-width:80px; }
+    .cl-dot { width:10px; height:10px; border-radius:50%; background:rgba(255,215,0,.15); border:1px solid rgba(255,215,0,.35); margin-bottom:4px; }
+    .cl-dot.active { background:var(--c2); box-shadow:0 0 8px var(--c2); }
+    .cl-stage-label { font-family:var(--mono); font-size:8px; color:var(--text-dim); letter-spacing:.5px; text-align:center; }
+    .cl-conn { flex:1; height:1px; background:rgba(255,215,0,.2); margin-bottom:14px; min-width:20px; }
+    #cl-actions { height:var(--bottom-h); display:flex; align-items:center; padding:0 16px; gap:8px; }
+
+    /* REPLAY OVERLAY */
+    #replay-topbar { height:var(--topbar-h); display:flex; align-items:center; padding:0 20px; border-bottom:1px solid rgba(57,255,20,.2); flex-shrink:0; }
+    #replay-title { font-family:var(--mono); font-size:12px; letter-spacing:3px; color:var(--c3); }
+    #replay-close { margin-left:auto; padding:5px 14px; border:1px solid rgba(57,255,20,.35); border-radius:5px; background:transparent; color:var(--c3); font-family:var(--mono); font-size:10px; cursor:pointer; }
+    #replay-close:hover { background:rgba(57,255,20,.08); }
+    #replay-stages-wrap { flex:1; padding:20px; overflow-y:auto; }
+    .replay-stage { display:flex; gap:16px; margin-bottom:16px; opacity:.3; transition:opacity .4s; }
+    .replay-stage.revealed { opacity:1; }
+    .rs-num { width:28px; height:28px; border-radius:50%; border:1px solid rgba(57,255,20,.4); background:rgba(57,255,20,.06); display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-size:10px; color:var(--c3); flex-shrink:0; margin-top:2px; }
+    .rs-body { flex:1; }
+    .rs-label { font-family:var(--mono); font-size:10px; letter-spacing:1.5px; color:var(--c3); margin-bottom:4px; }
+    .rs-content { background:rgba(10,20,34,.8); border:1px solid rgba(57,255,20,.12); border-radius:6px; padding:8px 12px; font-size:12px; color:var(--text); line-height:1.5; }
+    .rs-missing { color:rgba(255,215,0,.6); font-family:var(--mono); font-size:10px; font-style:italic; }
+
+    /* DETAIL DRAWER */
+    #detail-drawer { position:fixed; top:var(--topbar-h); right:0; bottom:var(--bottom-h); width:300px; z-index:250; background:rgba(6,13,26,.97); border-left:1px solid var(--border); backdrop-filter:blur(16px); display:flex; flex-direction:column; transform:translateX(100%); transition:transform .3s cubic-bezier(.4,0,.2,1); }
+    #detail-drawer.open { transform:translateX(0); }
+    #drawer-header { padding:14px 16px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+    #drawer-title { font-family:var(--mono); font-size:10px; letter-spacing:2px; color:var(--c1); }
+    #drawer-close { background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:18px; line-height:1; }
+    #drawer-close:hover { color:var(--text); }
+    #drawer-body { flex:1; overflow-y:auto; padding:14px 16px; }
+    .df { margin-bottom:12px; }
+    .df-key { font-family:var(--mono); font-size:9px; letter-spacing:1.5px; color:var(--text-dim); margin-bottom:4px; }
+    .df-val { font-size:12px; color:var(--text); line-height:1.5; word-break:break-word; }
+
+    /* AUTH OVERLAY */
+    #auth-overlay { position:fixed; inset:0; z-index:999; background:var(--bg); display:none; align-items:center; justify-content:center; }
+    .auth-card { max-width:360px; width:90%; border:1px solid var(--border); border-radius:14px; padding:40px; background:var(--bg1); text-align:center; }
+    .auth-logo { font-family:var(--mono); font-size:16px; letter-spacing:3px; color:var(--c1); text-shadow:0 0 20px rgba(0,229,255,.5); margin-bottom:8px; }
+    .auth-sub { font-family:var(--mono); font-size:9px; letter-spacing:2px; color:var(--text-dim); margin-bottom:28px; }
+    .auth-msg { font-size:13px; color:var(--text-dim); line-height:1.6; margin-bottom:24px; }
+    .auth-link { display:inline-block; padding:10px 28px; border:1px solid var(--c1); border-radius:8px; background:rgba(0,229,255,.08); color:var(--c1); font-family:var(--mono); font-size:11px; letter-spacing:2px; text-decoration:none; }
+    .auth-link:hover { background:rgba(0,229,255,.18); }
+
+    .dtALLOW{color:#39ff14;text-shadow:0 0 10px #39ff14}
+    .dtBLOCK,.dtUPHOLD{color:#ff073a;text-shadow:0 0 10px #ff073a}
+    .dtESCALATE{color:var(--c2);text-shadow:0 0 10px var(--c2)}
+    .dtDOWNGRADE{color:#00bcd4;text-shadow:0 0 10px #00bcd4}
+    .dtHOLD{color:#ff9800;text-shadow:0 0 10px #ff9800}
+    .dtDORMANT{color:var(--text-dim)}
+  </style>
+</head>
+<body>
+
+<!-- AUTH GATE -->
+<div id="auth-overlay">
+  <div class="auth-card">
+    <div class="auth-logo">SPLENDOR</div>
+    <div class="auth-sub">INTERACTIVE INTELLIGENCE INTERFACE</div>
+    <p class="auth-msg">No active session. Sign in to access the full interface.</p>
+    <a class="auth-link" href="/classic?next=/">SIGN IN</a>
+  </div>
+</div>
+
+<!-- TOPBAR -->
+<div id="topbar">
+  <div id="tb-logo">SPLENDOR <span>· v2 ·</span> INTERACTIVE</div>
+  <div id="tb-modes">
+    <span class="mode-badge cockpit" id="badge-cockpit">⌥ CLASPION</span>
+    <span class="mode-badge replay" id="badge-replay">▷ REPLAY</span>
+  </div>
+  <div id="tb-status">
+    <span class="sdot" id="dot-api" title="API"></span>
+    <span class="sdot" id="dot-mem" title="Memory"></span>
+    <span class="sdot" id="dot-gov" title="Governance"></span>
+  </div>
+  <div id="tb-actions">
+    <button class="tb-btn" data-action="returnToClassic">Classic UI</button>
+  </div>
+</div>
+
+<!-- MAIN 3-COLUMN -->
+<div id="main">
+  <!-- LEFT -->
+  <aside class="side-panel" id="left-panel">
+    <div class="panel">
+      <div class="panel-title">MEMORY LAYERS <span class="wired-badge">● LIVE</span></div>
+      <div id="mem-layers"><div class="pis">Loading…</div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">PROVENANCE STREAM <span class="wired-badge">● LIVE</span></div>
+      <div id="provenance-content"><div class="pis">Loading…</div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">COGNITIVE ARCHAEOLOGY <span class="wired-badge">● LIVE</span></div>
+      <div id="archaeology-content"><div class="pis">Loading…</div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">PROPOSALS <span class="wired-badge">● LIVE</span></div>
+      <div id="proposals-content"><div class="pis">Loading…</div></div>
+    </div>
+  </aside>
+
+  <!-- CENTER -->
+  <div id="center">
+    <div id="constellation-wrap">
+      <canvas id="constellation-canvas"></canvas>
+      <div id="node-tooltip"></div>
+    </div>
+    <div id="chat-area">
+      <div id="chat-messages">
+        <div class="msg snote">Splendor v2 · Interactive Intelligence Interface · <span id="session-hint">Connecting…</span></div>
+      </div>
+      <div id="typing-ind"><div class="tdots"><span></span><span></span><span></span></div></div>
+      <div id="chat-input-area">
+        <textarea id="chat-input" placeholder="Message Splendor…" rows="1"></textarea>
+        <button id="send-btn" data-action="sendMessage">SEND</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT -->
+  <aside class="side-panel" id="right-panel">
+    <div class="panel">
+      <div class="panel-title">GOVERNANCE <span class="wired-badge">● LIVE</span></div>
+      <div id="governance-content"><div class="pis">Loading…</div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">CLASPION STATUS <span class="wired-badge">● LIVE</span></div>
+      <div id="claspion-status-content"><div class="pis">Loading…</div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">REFLECTION INTEL <span class="wired-badge">● LIVE</span></div>
+      <div id="reflection-content"><div class="pis">Loading…</div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">SELF-MODEL <span class="wired-badge">● LIVE</span></div>
+      <div id="selfmodel-content"><div class="pis">Loading…</div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">AUTONOMY <span class="wired-badge">● LIVE</span></div>
+      <div id="autonomy-content"><div class="pis">Loading…</div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">EXPRESSION EVENTS <span class="wired-badge">● LIVE</span></div>
+      <div id="expression-content"><div class="pis">Loading…</div></div>
+    </div>
+  </aside>
+</div>
+
+<!-- BOTTOM BAR -->
+<div id="bottom-bar">
+  <button class="action-btn primary" id="btn-claspion" data-action="toggleClaspion">⌥ INSPECT WITH CLASPION</button>
+  <button class="action-btn secondary" id="btn-replay" data-action="toggleReplay">▷ REPLAY LAST INTERACTION</button>
+  <button class="action-btn neutral" id="btn-cockpit" data-action="openCockpit">⌥ FULL COCKPIT ↗</button>
+  <button class="action-btn neutral" id="btn-converse" data-action="toggleConverse">◎ CONVERSE</button>
+  <div id="bb-spacer"></div>
+  <button class="action-btn neutral" data-action="returnToClassic">← CLASSIC UI</button>
+</div>
+
+<!-- DETAIL DRAWER -->
+<div id="detail-drawer">
+  <div id="drawer-header"><span id="drawer-title">RECORD DETAIL</span><button id="drawer-close" data-action="closeDrawer">×</button></div>
+  <div id="drawer-body"></div>
+</div>
+
+<!-- CLASPION OVERLAY -->
+<div class="overlay hidden" id="claspion-overlay">
+  <div id="cl-topbar">
+    <span id="cl-title">CLASPION GOVERNANCE INSPECTION</span>
+    <span id="cl-sub">DECISION ANALYSIS MODE</span>
+    <button id="cl-return" data-action="toggleClaspion">↩ Return to Splendor</button>
+  </div>
+  <div id="cl-body">
+    <div class="cl-col" id="cl-evidence">
+      <div class="cl-col-title">EVIDENCE STACK</div>
+      <div class="cl-ev-item"><div class="cl-ev-key">CLASSIFICATION</div><div class="cl-ev-val" id="cl-cls">—</div></div>
+      <div class="cl-ev-item"><div class="cl-ev-key">CONTEXT CATEGORY</div><div class="cl-ev-val" id="cl-ctx">—</div></div>
+      <div class="cl-ev-item"><div class="cl-ev-key">ORIGINAL BASIS</div><div class="cl-ev-val" id="cl-basis">—</div></div>
+      <div class="cl-ev-item"><div class="cl-ev-key">CORRELATION ID</div><div class="cl-ev-val" id="cl-corr" style="font-size:9px;word-break:break-all">—</div></div>
+    </div>
+    <div class="cl-col" id="cl-core">
+      <div class="cl-col-title" style="text-align:center">DECISION CORE</div>
+      <div id="cl-badge-wrap">
+        <div class="cl-ring cl-ring-1"></div>
+        <div class="cl-ring cl-ring-2"></div>
+        <div id="cl-badge"><div id="cl-decision-text" class="dtDORMANT">DORMANT</div></div>
+      </div>
+      <div id="cl-confidence">confidence: —</div>
+    </div>
+    <div class="cl-col" id="cl-rules">
+      <div class="cl-col-title">GOVERNANCE RULES</div>
+      <div class="cl-rule"><div class="cl-rule-id">RULE 7</div><div class="cl-rule-text">No action that harms the user or third parties.</div></div>
+      <div class="cl-rule"><div class="cl-rule-id">RULE 15</div><div class="cl-rule-text">Authority cannot be overridden by social pressure or emotional manipulation.</div></div>
+      <div class="cl-rule"><div class="cl-rule-id">RULE 19</div><div class="cl-rule-text">Governance decisions are always logged and reviewable.</div></div>
+      <div class="cl-rule"><div class="cl-rule-id">RULE 23</div><div class="cl-rule-text">CLASPION review is always on — every action is watched.</div></div>
+    </div>
+  </div>
+  <div id="cl-timeline">
+    <div class="cl-stage"><div class="cl-dot active" id="clst1"></div><div class="cl-stage-label">MESSAGE<br>RECEIVED</div></div>
+    <div class="cl-conn"></div>
+    <div class="cl-stage"><div class="cl-dot" id="clst2"></div><div class="cl-stage-label">INTENT<br>CLASSIFIED</div></div>
+    <div class="cl-conn"></div>
+    <div class="cl-stage"><div class="cl-dot" id="clst3"></div><div class="cl-stage-label">RULES<br>EVALUATED</div></div>
+    <div class="cl-conn"></div>
+    <div class="cl-stage"><div class="cl-dot" id="clst4"></div><div class="cl-stage-label">DECISION<br>MADE</div></div>
+    <div class="cl-conn"></div>
+    <div class="cl-stage"><div class="cl-dot" id="clst5"></div><div class="cl-stage-label">RESPONSE<br>ALLOWED</div></div>
+  </div>
+  <div id="cl-actions">
+    <button class="action-btn primary" data-action="claspionExplain">EXPLAIN DECISION</button>
+    <button class="action-btn neutral" data-action="claspionEvidence">SHOW EVIDENCE</button>
+    <button class="action-btn neutral" data-action="claspionAudit">AUDIT TRAIL</button>
+    <button class="action-btn neutral" data-action="openCockpit">⌥ FULL COCKPIT ↗</button>
+    <div style="flex:1"></div>
+    <button class="action-btn neutral" data-action="toggleClaspion">↩ RETURN TO SPLENDOR</button>
+  </div>
+</div>
+
+<!-- REPLAY OVERLAY -->
+<div class="overlay hidden" id="replay-overlay">
+  <div id="replay-topbar">
+    <span id="replay-title">▷ REPLAY — LAST INTERACTION</span>
+    <button id="replay-close" data-action="toggleReplay">↩ Close</button>
+  </div>
+  <div id="replay-stages-wrap"><div id="replay-stages"></div></div>
+</div>
+
+<script src="/lib/supabase.js?v=__BUILD_ID__"></script>
+<script>
+(function () {
+  'use strict';
+
+  // Feature flags injected by server
+  const FLAGS = {
+    claspionCockpitEnabled: __CLASPION_COCKPIT_UI_ENABLED__,
+    replayModeEnabled: __REPLAY_MODE_ENABLED__
+  };
+
+  const SUPABASE_URL  = '__SUPABASE_URL__';
+  const SUPABASE_ANON = '__SUPABASE_ANON_KEY__';
+
+  // State
+  let authToken = null;
+  let userId = null;
+  let sessionId = null;
+  let sbClient = null;   // Supabase client, retained for token refresh
+  let lastDecision = null;
+  let claspionOpen = false;
+  let replayOpen = false;
+  let typing = false;
+  let hoveredNode = null;
+  let nodePulse = {};
+  let activeBeams = [];
+  let starField = [];
+  let canvas, ctx, canvasW, canvasH;
+
+  // Constellation node definitions
+  const NODES = [
+    { id:'core',       label:'SPLENDOR CORE',  cx:0,    cy:0,   r:22, color:'#00e5ff' },
+    { id:'core_mem',   label:'Core Memory',    cx:-130, cy:-55, r:14, color:'#00b8d9' },
+    { id:'working',    label:'Working Memory', cx:130,  cy:-55, r:12, color:'#00b8d9' },
+    { id:'episodic',   label:'Episodic',       cx:-80,  cy:85,  r:11, color:'#0084a8' },
+    { id:'semantic',   label:'Semantic',       cx:80,   cy:85,  r:11, color:'#0084a8' },
+    { id:'provenance', label:'Provenance',     cx:-155, cy:20,  r:10, color:'#a855f7' },
+    { id:'reflection', label:'Reflections',    cx:0,    cy:-105,r:12, color:'#39ff14' },
+    { id:'governance', label:'Governance',     cx:150,  cy:28,  r:13, color:'#ffd700' },
+  ];
+  const EDGES = [
+    ['core','core_mem'],['core','working'],['core','episodic'],['core','semantic'],
+    ['core','provenance'],['core','reflection'],['core','governance'],
+    ['core_mem','working'],['reflection','governance'],
+  ];
+
+  // ── INIT ──────────────────────────────────────────────────────────────────
+  async function init() {
+    if (!FLAGS.claspionCockpitEnabled) {
+      document.getElementById('btn-claspion').disabled = true;
+      document.getElementById('btn-claspion').title = 'Set CLASPION_COCKPIT_UI_ENABLED=true to enable';
+    }
+    if (!FLAGS.replayModeEnabled) {
+      document.getElementById('btn-replay').disabled = true;
+      document.getElementById('btn-replay').title = 'Set REPLAY_MODE_ENABLED=true to enable';
+    }
+
+    // Auth
+    try {
+      const sb = window.supabase || (window.Supabase && window.Supabase.createClient ? window.Supabase : null);
+      if (sb && SUPABASE_URL && SUPABASE_ANON) {
+        const client = (typeof sb.createClient === 'function') ? sb.createClient(SUPABASE_URL, SUPABASE_ANON) : sb;
+        sbClient = client; // retained for token refresh (see authedFetch/refreshAuth)
+        const { data } = await client.auth.getSession();
+        if (data && data.session) {
+          authToken = data.session.access_token;
+          userId    = data.session.user.id;
+          // Stable, localStorage-backed session id so continuity survives refresh.
+          // Falls back to an in-memory ephemeral id if storage is unavailable.
+          sessionId = stableSessionId();
+          document.getElementById('session-hint').textContent = 'Session active';
+          setDot('dot-api', true);
+        } else {
+          document.getElementById('auth-overlay').style.display = 'flex';
+          return;
+        }
+      } else {
+        document.getElementById('session-hint').textContent = 'Demo mode';
+      }
+    } catch (e) {
+      console.warn('[UI] Auth init failed:', e.message);
+    }
+
+    initConstellation();
+    await restoreConversation();
+    await Promise.allSettled([
+      loadMemoryLayers(), loadGovernance(), loadClaspionStatus(),
+      loadProvenance(), loadArchaeology(), loadExpressionEvents(),
+      loadProposals(), loadAutonomy(), loadSelfModel(), loadReflectionIntel(),
+    ]);
+    setInterval(refreshPanels, 12000);
+    animateConstellation();
+  }
+
+  // Restore recent conversation so a refresh doesn't feel like Splendor forgot
+  // everything. Uses /api/memory/conversations (shared_history turns, newest
+  // first, content prefixed "User: " / "Splendor: "). If the backend history
+  // source is empty, this renders nothing — it never invents history.
+  async function restoreConversation() {
+    if (!authToken) return 0;
+    try {
+      const data = await api('/api/memory/conversations');
+      const turns = (data && Array.isArray(data.turns)) ? data.turns.slice(0, 16).reverse() : [];
+      if (!turns.length) { console.info('[UI] restore: 0 usable turns (backend history source empty)'); return 0; }
+      for (const t of turns) {
+        const c = (t && t.content) || '';
+        const role = /^\s*user\s*:/i.test(c) ? 'user' : 'assistant';
+        const body = c.replace(/^\s*(user|splendor|assistant)\s*:\s*/i, '');
+        if (body.trim()) appendMsg(role, body);
+      }
+      const div = document.createElement('div');
+      div.className = 'msg system'; div.style.cssText = 'opacity:.5;font-size:11px;text-align:center;margin:6px 0;';
+      div.textContent = '— restored ' + turns.length + ' from memory —';
+      document.getElementById('chat-messages').appendChild(div);
+      scrollChat();
+      console.info('[UI] restore: ' + turns.length + ' turns');
+      return turns.length;
+    } catch (e) { console.warn('[UI] restore failed:', e.message); return 0; }
+  }
+
+  // ── API ───────────────────────────────────────────────────────────────────
+  // Stable, localStorage-backed session id (so refresh keeps the same thread).
+  function stableSessionId() {
+    try {
+      let id = localStorage.getItem('splendor_session_id');
+      if (!id) {
+        id = 'sess-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+        localStorage.setItem('splendor_session_id', id);
+      }
+      return id;
+    } catch (_) {
+      // private mode / storage blocked → degrade to an in-memory ephemeral id
+      return 'sess-' + Date.now();
+    }
+  }
+
+  // Refresh the Supabase access token once. Returns true on success.
+  async function refreshAuth() {
+    try {
+      if (!sbClient || !sbClient.auth || typeof sbClient.auth.refreshSession !== 'function') return false;
+      const { data } = await sbClient.auth.refreshSession();
+      if (data && data.session) { authToken = data.session.access_token; return true; }
+    } catch (_) {}
+    return false;
+  }
+
+  // fetch wrapper with Bearer auth + single 401-refresh-retry (mirrors Classic).
+  async function authedFetch(path, opts) {
+    opts = opts || {};
+    const build = () => {
+      const h = Object.assign({ 'Content-Type': 'application/json' }, (opts.headers || {}));
+      if (authToken) h['Authorization'] = 'Bearer ' + authToken;
+      return Object.assign({}, opts, { headers: h });
+    };
+    let res = await fetch(path, build());
+    if (res.status === 401 && await refreshAuth()) {
+      res = await fetch(path, build());
+    }
+    return res;
+  }
+
+  async function api(path, opts) {
+    const res = await authedFetch(path, opts);
+    if (!res.ok) throw new Error(res.status);
+    return res.json();
+  }
+
+  // ── CONSTELLATION ─────────────────────────────────────────────────────────
+  function initConstellation() {
+    canvas = document.getElementById('constellation-canvas');
+    ctx = canvas.getContext('2d');
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+    canvas.addEventListener('mousemove', onMove);
+    canvas.addEventListener('click', onClick);
+    // Generate background star field once (positions are fractions 0-1)
+    starField = Array.from({ length: 200 }, () => ({
+      x: Math.random(), y: Math.random(),
+      r: 0.3 + Math.random() * 1.0,
+      a: 0.08 + Math.random() * 0.55,
+      phase: Math.random() * Math.PI * 2,
+      freq:  0.25 + Math.random() * 1.4,
+    }));
+    // Unique twinkling rhythm per node
+    NODES.forEach(n => {
+      n._twinklePhase = Math.random() * Math.PI * 2;
+      n._twinkleFreq  = 0.35 + Math.random() * 0.55;
+    });
+  }
+
+  function resizeCanvas() {
+    const w = document.getElementById('constellation-wrap');
+    canvasW = w.clientWidth; canvasH = w.clientHeight;
+    canvas.width = canvasW; canvas.height = canvasH;
+  }
+
+  function npos(n) { return { x: canvasW/2 + n.cx, y: canvasH/2 + n.cy }; }
+
+  function animateConstellation() {
+    requestAnimationFrame(animateConstellation);
+    const t = Date.now() / 1000;
+
+    // ── Deep space background ──────────────────────────────────────────────
+    ctx.fillStyle = '#020912';
+    ctx.fillRect(0, 0, canvasW, canvasH);
+
+    // ── Distant star field ─────────────────────────────────────────────────
+    starField.forEach(s => {
+      const tw = 0.5 + 0.5 * Math.sin(t * s.freq + s.phase);
+      ctx.beginPath();
+      ctx.arc(s.x * canvasW, s.y * canvasH, s.r, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(200,220,255,' + (s.a * tw) + ')';
+      ctx.fill();
+    });
+
+    // ── Nebula atmosphere ──────────────────────────────────────────────────
+    const ncx = canvasW / 2, ncy = canvasH / 2;
+    const neb = ctx.createRadialGradient(ncx, ncy - 15, 0, ncx, ncy - 15, canvasH * 0.85);
+    neb.addColorStop(0,   'rgba(20,45,110,0.14)');
+    neb.addColorStop(0.45,'rgba(15,25,75,0.06)');
+    neb.addColorStop(1,   'transparent');
+    ctx.beginPath(); ctx.arc(ncx, ncy - 15, canvasH * 0.85, 0, Math.PI * 2);
+    ctx.fillStyle = neb; ctx.fill();
+
+    // ── Constellation lines ────────────────────────────────────────────────
+    ctx.setLineDash([]);
+    EDGES.forEach(([a, b]) => {
+      const na = NODES.find(n => n.id === a), nb = NODES.find(n => n.id === b);
+      if (!na || !nb) return;
+      const pa = npos(na), pb = npos(nb);
+      const p = Math.min(1, (nodePulse[a] || 0) + (nodePulse[b] || 0));
+      const beamActive = activeBeams.some(bm => (bm.from===a&&bm.to===b)||(bm.from===b&&bm.to===a));
+      // Outer soft glow
+      ctx.beginPath();
+      ctx.strokeStyle = 'rgba(100,180,255,' + (beamActive ? 0.18 : 0.05 + p * 0.07) + ')';
+      ctx.lineWidth = beamActive ? 4 : 2.5;
+      ctx.moveTo(pa.x, pa.y); ctx.lineTo(pb.x, pb.y); ctx.stroke();
+      // Crisp inner line
+      ctx.beginPath();
+      ctx.strokeStyle = 'rgba(160,215,255,' + (beamActive ? 0.55 : 0.12 + p * 0.2) + ')';
+      ctx.lineWidth = 0.6;
+      ctx.moveTo(pa.x, pa.y); ctx.lineTo(pb.x, pb.y); ctx.stroke();
+    });
+
+    // ── Directed beams (signal-travel particles) ───────────────────────────
+    for (let idx = activeBeams.length - 1; idx >= 0; idx--) {
+      const beam = activeBeams[idx];
+      const na = NODES.find(n => n.id === beam.from);
+      const nb = NODES.find(n => n.id === beam.to);
+      if (!na || !nb) { activeBeams.splice(idx, 1); continue; }
+      const pa = npos(na), pb = npos(nb);
+      const [rr, gg, bb] = hexRGB(nb.color);
+      // Comet trail
+      for (let k = 5; k >= 1; k--) {
+        const trailT = Math.max(0, beam.t - k * 0.055);
+        const tx = pa.x + (pb.x - pa.x) * trailT;
+        const ty = pa.y + (pb.y - pa.y) * trailT;
+        ctx.beginPath();
+        ctx.arc(tx, ty, Math.max(0.2, 2.5 - k * 0.36), 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba('+rr+','+gg+','+bb+','+(Math.max(0,(0.42-k*0.07)*beam.intensity))+')';
+        ctx.fill();
+      }
+      // Main particle: white core → node color halo
+      const bx = pa.x + (pb.x - pa.x) * beam.t;
+      const by = pa.y + (pb.y - pa.y) * beam.t;
+      const grd = ctx.createRadialGradient(bx, by, 0, bx, by, 16);
+      grd.addColorStop(0,   'rgba(255,255,255,' + beam.intensity + ')');
+      grd.addColorStop(0.18,'rgba('+rr+','+gg+','+bb+',' + (0.9*beam.intensity) + ')');
+      grd.addColorStop(0.6, 'rgba('+rr+','+gg+','+bb+',' + (0.3*beam.intensity) + ')');
+      grd.addColorStop(1,   'transparent');
+      ctx.beginPath(); ctx.arc(bx, by, 16, 0, Math.PI*2);
+      ctx.fillStyle = grd; ctx.fill();
+      ctx.beginPath(); ctx.arc(bx, by, 1.8, 0, Math.PI*2);
+      ctx.fillStyle = 'rgba(255,255,255,' + beam.intensity + ')'; ctx.fill();
+      beam.t += beam.speed;
+      if (beam.t >= 1) { pulse(beam.to, beam.intensity * 0.85); activeBeams.splice(idx, 1); }
+    }
+
+    // ── Stars (cognitive nodes) ────────────────────────────────────────────
+    NODES.forEach(n => {
+      const pos  = npos(n);
+      const pv   = nodePulse[n.id] || 0;
+      const hov  = hoveredNode === n.id;
+      const isCore = n.id === 'core';
+      const tw   = 0.78 + 0.22 * Math.sin(t * n._twinkleFreq + n._twinklePhase);
+      const breathe = isCore ? Math.sin(t * 1.8) * 3 : 0;
+      const r    = n.r + breathe + pv * 6;
+      const [rr, gg, bb] = hexRGB(n.color);
+      const boost = (hov ? 1.5 : 1.0) * tw;
+
+      // Layer 1 — vast outer nebula halo
+      const outerR = r * (isCore ? 9 : 6.5);
+      const g1 = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, outerR);
+      g1.addColorStop(0,    'rgba('+rr+','+gg+','+bb+','+ ((0.09+pv*0.13)*boost) +')');
+      g1.addColorStop(0.35, 'rgba('+rr+','+gg+','+bb+','+ ((0.04+pv*0.05)*boost) +')');
+      g1.addColorStop(1,    'transparent');
+      ctx.beginPath(); ctx.arc(pos.x, pos.y, outerR, 0, Math.PI*2);
+      ctx.fillStyle = g1; ctx.fill();
+
+      // Layer 2 — inner stellar glow
+      const innerR = r * 2.8;
+      const g2 = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, innerR);
+      g2.addColorStop(0, 'rgba('+rr+','+gg+','+bb+','+ ((0.6+pv*0.38)*boost) +')');
+      g2.addColorStop(1, 'transparent');
+      ctx.beginPath(); ctx.arc(pos.x, pos.y, innerR, 0, Math.PI*2);
+      ctx.fillStyle = g2; ctx.fill();
+
+      // Layer 3 — diffraction spikes (4 for satellites, 6 for core)
+      const spikeCount = isCore ? 6 : 4;
+      const spikeLen   = r * 2.4 + pv * 24 + (hov ? 12 : 0);
+      const spikeBase  = isCore ? Math.PI / 6 : Math.PI / 4;
+      for (let s = 0; s < spikeCount; s++) {
+        const angle = spikeBase + (s / spikeCount) * Math.PI * 2;
+        const ex = pos.x + Math.cos(angle) * spikeLen;
+        const ey = pos.y + Math.sin(angle) * spikeLen;
+        const sg = ctx.createLinearGradient(pos.x, pos.y, ex, ey);
+        sg.addColorStop(0,   'rgba('+rr+','+gg+','+bb+','+ ((0.65+pv*0.3)*tw) +')');
+        sg.addColorStop(0.35,'rgba('+rr+','+gg+','+bb+','+ ((0.22+pv*0.1)*tw) +')');
+        sg.addColorStop(1,   'transparent');
+        ctx.beginPath();
+        ctx.moveTo(pos.x, pos.y); ctx.lineTo(ex, ey);
+        ctx.strokeStyle = sg;
+        ctx.lineWidth = 0.85 + pv * 0.9;
+        ctx.stroke();
+      }
+
+      // Layer 4 — bright stellar core + pixel center
+      const coreR = (isCore ? 3.5 : 2.2) + pv * 2.5;
+      const g3 = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, coreR * 2.2);
+      g3.addColorStop(0,   'rgba(255,255,255,'+ (0.92*boost) +')');
+      g3.addColorStop(0.4, 'rgba('+rr+','+gg+','+bb+','+ (0.75*boost) +')');
+      g3.addColorStop(1,   'transparent');
+      ctx.beginPath(); ctx.arc(pos.x, pos.y, coreR * 2.2, 0, Math.PI*2);
+      ctx.fillStyle = g3; ctx.fill();
+      ctx.beginPath(); ctx.arc(pos.x, pos.y, 1.4, 0, Math.PI*2);
+      ctx.fillStyle = 'rgba(255,255,255,'+ (0.96*tw) +')'; ctx.fill();
+
+      // Layer 5 — catalog label: always faint, bright on hover
+      const la = hov ? 0.9 : Math.max(0.18, 0.18 + pv * 0.55);
+      ctx.font = (isCore ? '500 10px' : '9px') + ' IBM Plex Mono';
+      ctx.fillStyle = 'rgba('+rr+','+gg+','+bb+','+ la +')';
+      ctx.textAlign = 'center';
+      ctx.fillText(n.label, pos.x, pos.y + r + 15 + pv * 3);
+    });
+
+    Object.keys(nodePulse).forEach(k => { nodePulse[k] = Math.max(0, (nodePulse[k]||0) - 0.012); });
+  }
+
+  function hexRGB(h) {
+    return [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)];
+  }
+
+  function onMove(e) {
+    const r = canvas.getBoundingClientRect();
+    const mx = e.clientX - r.left, my = e.clientY - r.top;
+    let found = null;
+    NODES.forEach(n => { if (Math.hypot(mx - (canvasW/2+n.cx), my - (canvasH/2+n.cy)) < n.r+10) found = n.id; });
+    hoveredNode = found;
+    const tt = document.getElementById('node-tooltip');
+    if (found) {
+      const nd = NODES.find(n => n.id === found);
+      tt.style.display = 'block';
+      tt.style.left = (e.clientX - r.left + 16) + 'px';
+      tt.style.top  = (e.clientY - r.top  - 10) + 'px';
+      tt.textContent = nd.label;
+      canvas.style.cursor = 'pointer';
+    } else { tt.style.display = 'none'; canvas.style.cursor = 'default'; }
+  }
+
+  function onClick() {
+    if (hoveredNode && hoveredNode !== 'core') {
+      const nd = NODES.find(n => n.id === hoveredNode);
+      openDrawer(nd.label, { 'Node type': nd.id, Label: nd.label, Status: 'Live constellation node — click panel items for detailed records.' });
+    }
+  }
+
+  function pulse(id, amt) { nodePulse[id] = Math.min(1, (nodePulse[id]||0) + (amt||0.8)); }
+
+  // ── DIRECTED BEAM ENGINE ──────────────────────────────────────────────────
+  // fireBeam() launches a particle that travels from `from` to `to` along the
+  // edge, lighting up the destination on arrival. Used by both startFiring
+  // (in-flight activity) and playTrace (post-turn deterministic replay).
+  function fireBeam(fromId, toId, intensity) {
+    if (!toId) { pulse(fromId, intensity); return; }
+    activeBeams.push({ from: fromId, to: toId, t: 0, speed: 0.032, intensity });
+    pulse(fromId, intensity * 0.3);
+  }
+
+  // In-flight activity: directed beams following cognitive processing order
+  // (intake → governance gate → memory → working context → recall →
+  //  semantic → provenance → reflection → synthesis). Not random.
+  const THINKING_PHASES = [
+    { from: 'core',       to: null,         intensity: 0.8  }, // intake
+    { from: 'core',       to: 'governance', intensity: 0.9  }, // CLASPION gate
+    { from: 'core',       to: 'core_mem',   intensity: 0.85 }, // memory query
+    { from: 'core_mem',   to: 'working',    intensity: 0.8  }, // context → working
+    { from: 'core',       to: 'episodic',   intensity: 0.7  }, // recall
+    { from: 'core',       to: 'semantic',   intensity: 0.75 }, // concepts
+    { from: 'core',       to: 'provenance', intensity: 0.6  }, // attribution
+    { from: 'core',       to: 'reflection', intensity: 0.8  }, // self-check
+    { from: 'reflection', to: 'governance', intensity: 0.85 }, // align
+    { from: 'core_mem',   to: 'working',    intensity: 0.9  }, // synthesis
+  ];
+  let firingTimer = null;
+  function startFiring() {
+    if (firingTimer) return;
+    let phaseIdx = 0;
+    const step = () => {
+      const ph = THINKING_PHASES[phaseIdx];
+      fireBeam(ph.from, ph.to, ph.intensity);
+      pulse('core', 0.3);
+      phaseIdx = phaseIdx >= THINKING_PHASES.length - 1 ? 2 : phaseIdx + 1;
+    };
+    step();
+    firingTimer = setInterval(step, 310);
+  }
+  function stopFiring() {
+    if (firingTimer) { clearInterval(firingTimer); firingTimer = null; }
+    // beams in flight finish traveling naturally
+  }
+
+  // ── DETERMINISTIC TRACE REPLAY ────────────────────────────────────────────
+  // Called after a turn completes with the real trace from the server.
+  // Maps trace.events → exact beam sequences. Only stages with status=complete
+  // are animated. Nothing is guessed or randomized.
+  const TRACE_BEAMS = {
+    message_received:   [{ from: 'core',       to: null,         intensity: 0.9  }],
+    intent_classified:  [{ from: 'core',       to: 'working',    intensity: 0.8  }],
+    // memory_lookup handled specially from event.layers
+    governance_checked: [{ from: 'core',       to: 'governance', intensity: 0.9  }],
+    rules_applied:      [{ from: 'core',       to: 'reflection', intensity: 0.85 },
+                         { from: 'reflection', to: 'governance', intensity: 0.8  }],
+    response_generated: [{ from: 'working',    to: 'core',       intensity: 0.95 }],
+    audit_logged:       [{ from: 'core',       to: 'provenance', intensity: 0.6  }],
+  };
+  const LAYER_NODE = { core_mem: 'core_mem', episodic: 'episodic', semantic: 'semantic', provenance: 'provenance', working: 'working' };
+  function playTrace(trace) {
+    if (!trace || !Array.isArray(trace.events)) return;
+    let delay = 0;
+    const STEP = 360;
+    trace.events.forEach(ev => {
+      if (ev.status !== 'complete') return;
+      if (ev.stage === 'memory_lookup' && Array.isArray(ev.layers)) {
+        const memNodes = ev.layers.map(l => LAYER_NODE[l]).filter(Boolean).filter(id => id !== 'working');
+        memNodes.forEach((nodeId, i) => setTimeout(() => fireBeam('core', nodeId, 0.75), delay + i * 120));
+        const coreMemUsed = ev.layers.includes('core_mem');
+        if (coreMemUsed) setTimeout(() => fireBeam('core_mem', 'working', 0.7), delay + memNodes.length * 120 + 100);
+        delay += STEP + memNodes.length * 120;
+      } else {
+        const beams = TRACE_BEAMS[ev.stage];
+        if (beams) {
+          beams.forEach((b, i) => setTimeout(() => fireBeam(b.from, b.to, b.intensity), delay + i * 190));
+          delay += STEP + (beams.length - 1) * 190;
+        }
+      }
+    });
+  }
+
+  // ── PANEL LOADERS ─────────────────────────────────────────────────────────
+  async function loadMemoryLayers() {
+    if (!authToken) return;
+    try {
+      const data = await api('/api/memory/conversations');
+      const total = data.count || 0;
+      document.getElementById('mem-layers').innerHTML = [
+        ['Core Memory','core_mem'], ['Working Memory','working'],
+        ['Episodic','episodic'], ['Semantic','semantic'],
+        ['Provenance','provenance'], ['Reflections','reflection'],
+      ].map(([lbl, nid]) => `
+        <div class="panel-item" ${drawerAttr(lbl, { 'Total turns': String(total), Layer: lbl, Note: 'Per-layer counts pending — showing total turns.' })}>
+          <div class="pil">${lbl}<span class="cnt">—</span></div>
+        </div>`).join('');
+      setDot('dot-mem', true);
+    } catch (_) { document.getElementById('mem-layers').innerHTML = '<div class="pis">Memory unavailable</div>'; }
+  }
+
+  async function loadProvenance() {
+    if (!authToken) return;
+    try {
+      const rows = await api('/api/flight-recorder/timeline?limit=6');
+      const el = document.getElementById('provenance-content');
+      if (!rows || !rows.length) { el.innerHTML = '<div class="pis">No recent turns</div>'; return; }
+      el.innerHTML = rows.map(r => {
+        const detail = {
+          Timestamp: r.recorded_at || r.created_at || '—',
+          Surface: r.surface || '—',
+          'Session ID': r.session_id || '—',
+          'Memory sources': r.memory_sources_count != null ? r.memory_sources_count : '—',
+          'Governance decision': r.governance_decision || '—',
+        };
+        return `<div class="panel-item" ${drawerAttr('Provenance Turn', detail)}>
+          <div class="pil">${esc(r.surface || 'turn')}<span class="cnt" style="color:var(--c5)">${(r.recorded_at||r.created_at||'').slice(11,16)||'—'}</span></div>
+          <div class="pis">${esc(r.governance_decision || 'no decision')}</div></div>`;
+      }).join('');
+      pulse('provenance', 0.4);
+    } catch (_) {}
+  }
+
+  async function loadArchaeology() {
+    if (!authToken) return;
+    try {
+      const data = await api('/api/flight-recorder/archaeology');
+      const el = document.getElementById('archaeology-content');
+      if (!data) { el.innerHTML = '<div class="pis">No recorded turns yet</div>'; return; }
+      const detail = {
+        'Total turns': data.total_turns || '—',
+        'Sessions': data.session_count || '—',
+        'Avg confidence': data.avg_confidence != null ? (data.avg_confidence*100).toFixed(1)+'%' : '—',
+        'Contradiction events': data.contradiction_count || 0,
+      };
+      el.innerHTML = `<div class="panel-item" ${drawerAttr('Cognitive Archaeology', detail)}>
+        <div class="pil">Total turns<span class="cnt">${data.total_turns||'—'}</span></div>
+        <div class="pis">Sessions: ${data.session_count||'—'} · Conf: ${data.avg_confidence!=null?(data.avg_confidence*100).toFixed(0)+'%':'—'}</div></div>`;
+    } catch (_) { document.getElementById('archaeology-content').innerHTML = '<div class="pis">Archaeology unavailable</div>'; }
+  }
+
+  async function loadGovernance() {
+    try {
+      const data = await api('/api/governance/state');
+      const detail = {
+        'Quarantine mode': data.quarantine_mode ? '🚨 ACTIVE' : 'Normal',
+        'Core rules': data.core_rules_count || '—',
+        'Rules version': data.rules_version || '—',
+        'Enforcement layers': Array.isArray(data.enforcement_layers) ? data.enforcement_layers.join(', ') : '—',
+      };
+      document.getElementById('governance-content').innerHTML =
+        `<div class="panel-item" ${drawerAttr('Governance State', detail)}>
+          <div class="pil">Core Rules<span class="cnt">${data.core_rules_count||'—'}</span></div>
+          <div class="pis">v${data.rules_version||'?'} · ${data.quarantine_mode?'🚨 QUARANTINE':'Normal'}</div></div>`;
+      setDot('dot-gov', true);
+    } catch (_) {}
+  }
+
+  // Maps a CLASPION decision_type to its colour class.
+  function claspionDecisionClass(dt) {
+    return { ALLOW:'dtALLOW', ASSIST:'dtDOWNGRADE', BLOCK:'dtBLOCK', UPHOLD_BLOCK:'dtUPHOLD',
+             ESCALATE:'dtESCALATE', ESCALATE_FOR_REVIEW:'dtESCALATE', HOLD:'dtHOLD',
+             DOWNGRADE_TO_ALLOW:'dtDOWNGRADE', DORMANT:'dtDORMANT' }[dt] || 'dtDORMANT';
+  }
+
+  async function loadClaspionStatus() {
+    try {
+      const data = await api('/api/claspion/cockpit/status');
+      lastDecision = data;
+      // The cockpit endpoint nests the decision under `decision`.
+      const dec = data.decision || {};
+      const dt = (dec.decision_type || 'DORMANT').toUpperCase();
+      const cls = claspionDecisionClass(dt);
+      const el = document.getElementById('claspion-status-content');
+      el.innerHTML =
+        `<div class="panel-item" id="claspion-status-item">
+          <div class="pil">Last Decision<span class="cnt ${cls}" style="font-size:9px">${esc(dt.replace(/_/g,' '))}</span></div>
+          <div class="pis">${esc(dec.reason || 'No recent decision')}</div></div>`;
+      // Attach via listener (not inline onclick) so reasons with quotes/objects
+      // can never break the markup or render as [object Object].
+      const item = document.getElementById('claspion-status-item');
+      if (item) item.addEventListener('click', () => openDrawer('CLASPION Decision', {
+        Decision: dt.replace(/_/g, ' '),
+        Reason: dec.reason || '—',
+        Confidence: dec.confidence != null ? dec.confidence + '%' : '—',
+        'Risk level': dec.risk_level || '—',
+        'Context category': dec.context_category || dec.original_classification || '—',
+        'Decision ID': dec.decision_id || '—',
+        'Audit entries': data.audit_count != null ? data.audit_count : '—',
+        Timestamp: data.timestamp || '—',
+      }));
+      pulse('governance', 0.4);
+    } catch (_) {}
+  }
+
+  async function loadExpressionEvents() {
+    if (!authToken) return;
+    try {
+      const data = await api('/api/expression-events?limit=5');
+      const events = Array.isArray(data) ? data : (data.events || []);
+      const el = document.getElementById('expression-content');
+      if (!events.length) { el.innerHTML = '<div class="pis">No recent expression events</div>'; return; }
+      el.innerHTML = events.map(ev => {
+        const detail = {
+          Type: ev.event_type || ev.type || '—',
+          Content: String(ev.content || ev.message || '').slice(0, 200),
+          Timestamp: ev.created_at || '—',
+          Confidence: ev.confidence != null ? ev.confidence : '—',
+        };
+        return `<div class="panel-item" ${drawerAttr('Expression Event', detail)}>
+          <div class="pil">${esc(ev.event_type||ev.type||'event')}<span class="cnt" style="font-size:9px;color:var(--c3)">${(ev.created_at||'').slice(11,16)}</span></div>
+          <div class="pis">${esc(String(ev.content||ev.message||'').slice(0,60))}</div></div>`;
+      }).join('');
+    } catch (_) { document.getElementById('expression-content').innerHTML = '<div class="pis">No events available</div>'; }
+  }
+
+  // ── PROPOSALS (autonomy proposals awaiting owner review) ────────────────────
+  async function loadProposals() {
+    if (!authToken) return;
+    const el = document.getElementById('proposals-content');
+    try {
+      const data = await api('/api/autonomy/proposals?status=pending');
+      const proposals = (data && data.proposals) || [];
+      if (!proposals.length) { el.innerHTML = '<div class="pis">No pending proposals</div>'; return; }
+      el.innerHTML = proposals.slice(0, 5).map(p => {
+        const title = p.title || p.proposal_type || p.kind || 'proposal';
+        const detail = {
+          Title: title,
+          Type: p.proposal_type || p.kind || '—',
+          Status: p.status || '—',
+          Rationale: p.rationale || p.description || p.summary || '—',
+          Created: p.created_at || '—',
+        };
+        return `<div class="panel-item" ${drawerAttr('Proposal', detail)}>
+          <div class="pil">${esc(String(title).slice(0,40))}<span class="cnt" style="color:var(--c2)">${esc(p.status||'pending')}</span></div>
+          <div class="pis">${esc(String(p.rationale||p.description||p.summary||'').slice(0,60)||'awaiting review')}</div></div>`;
+      }).join('');
+    } catch (_) { el.innerHTML = '<div class="pis">Proposals unavailable</div>'; }
+  }
+
+  // ── AUTONOMY (proposal status breakdown) ────────────────────────────────────
+  async function loadAutonomy() {
+    if (!authToken) return;
+    const el = document.getElementById('autonomy-content');
+    try {
+      const data = await api('/api/autonomy/proposals');
+      const proposals = (data && data.proposals) || [];
+      const counts = {};
+      proposals.forEach(p => { const s = p.status || 'pending'; counts[s] = (counts[s] || 0) + 1; });
+      const pending = counts.pending || 0;
+      const detail = {
+        'Total proposals': proposals.length,
+        Pending: pending,
+        Approved: counts.approved || 0,
+        Denied: counts.denied || 0,
+        'Status breakdown': counts,
+      };
+      el.innerHTML = `<div class="panel-item" ${drawerAttr('Autonomy', detail)}>
+        <div class="pil">Proposals<span class="cnt">${proposals.length}</span></div>
+        <div class="pis">${pending} pending · ${counts.approved||0} approved · ${counts.denied||0} denied</div></div>`;
+    } catch (_) { el.innerHTML = '<div class="pis">Autonomy unavailable</div>'; }
+  }
+
+  // ── SELF-MODEL (claim audit stats) ──────────────────────────────────────────
+  async function loadSelfModel() {
+    if (!authToken) return;
+    const el = document.getElementById('selfmodel-content');
+    try {
+      const data = await api('/api/self-model/stats');
+      const total = data.total_claims != null ? data.total_claims : 0;
+      const detail = {
+        'Total claims (7d)': total,
+        'Flagged claims': data.flagged_claims != null ? data.flagged_claims : 0,
+        'Most common label': data.most_common_label || '—',
+        'Status distribution': data.status_distribution || {},
+        'Label distribution': data.label_distribution || {},
+      };
+      el.innerHTML = `<div class="panel-item" ${drawerAttr('Self-Model', detail)}>
+        <div class="pil">Claims (7d)<span class="cnt">${total}</span></div>
+        <div class="pis">${data.flagged_claims||0} flagged · ${esc(data.most_common_label||'no labels')}</div></div>`;
+    } catch (_) { el.innerHTML = '<div class="pis">Self-model unavailable</div>'; }
+  }
+
+  // ── REFLECTION INTEL (active interpretations / beliefs Splendor holds) ───────
+  async function loadReflectionIntel() {
+    if (!authToken) return;
+    const el = document.getElementById('reflection-content');
+    try {
+      const data = await api('/api/interpretations/active');
+      const items = (data && data.interpretations) || [];
+      if (!items.length) { el.innerHTML = '<div class="pis">No active interpretations</div>'; return; }
+      el.innerHTML = items.slice(0, 5).map(it => {
+        const belief = it.belief || it.revised_belief || '';
+        const conf = it.confidence != null ? Math.round(it.confidence * 100) + '%' : '—';
+        const detail = {
+          Belief: belief || '—',
+          Confidence: conf,
+          Status: it.status || '—',
+          Source: it.source || '—',
+          'Formed at': it.formed_at || '—',
+          Unresolved: it.unresolved ? 'yes' : 'no',
+          'Revised belief': it.revised_belief || '—',
+          Notes: it.notes || '—',
+        };
+        return `<div class="panel-item" ${drawerAttr('Interpretation', detail)}>
+          <div class="pil">Belief<span class="cnt" style="font-size:9px;color:var(--c4)">${esc(conf)}</span></div>
+          <div class="pis">${esc(String(belief).slice(0,70)||'interpretation')}</div></div>`;
+      }).join('');
+    } catch (_) { el.innerHTML = '<div class="pis">Interpretations unavailable</div>'; }
+  }
+
+  async function refreshPanels() {
+    await Promise.allSettled([
+      loadClaspionStatus(), loadProvenance(), loadExpressionEvents(),
+      loadProposals(), loadAutonomy(), loadSelfModel(), loadReflectionIntel(),
+    ]);
+  }
+
+  // ── CHAT ──────────────────────────────────────────────────────────────────
+  document.getElementById('chat-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  });
+  document.getElementById('chat-input').addEventListener('input', function () {
+    this.style.height = 'auto';
+    this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+    // Flicker the core as you type so the constellation shows it's live.
+    pulse('core', 0.14); pulse('working', 0.08);
+  });
+
+  async function sendMessage() {
+    const inp = document.getElementById('chat-input');
+    const text = inp.value.trim();
+    if (!text || typing) return;
+    appendMsg('user', text);
+    inp.value = ''; inp.style.height = 'auto';
+    if (!authToken) { appendMsg('assistant', 'No active session — please sign in first.'); return; }
+    setTyping(true);
+    pulse('core', 1); pulse('working', 0.7);
+    try {
+      const res = await authedFetch('/api/enhanced/chat/stream', {
+        method: 'POST',
+        body: JSON.stringify({ message: text, sessionId }),
+      });
+
+      // A governance block surfaces here as a non-2xx (or 200) JSON body from
+      // the request gate, carrying { message, governance:{...} }. Render it
+      // clearly inline rather than as a blank "Error".
+      const ctype = (res.headers.get('content-type') || '');
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        if (body && body.governance) { renderGovernance(body); return; }
+        // Non-governance failure (503/500/etc) → fall back to non-streaming.
+        await nonStreamFallback(text); return;
+      }
+      // JSON (not SSE): either a governance block (recoverable, 200) or the
+      // CLASPION explanation/review intercept.
+      if (ctype.includes('application/json')) {
+        const payload = await res.json();
+        if (payload.governance) { renderGovernance(payload); return; }
+        const claspionMsg = payload.message || payload.response || payload.text || '';
+        appendMsg('assistant', claspionMsg || '(CLASPION returned no message)');
+        if (payload.claspion_mode) pulse('governance', 1);
+        setTyping(false); pulse('core', 0.4);
+        setTimeout(loadClaspionStatus, 400);
+        return;
+      }
+
+      // SSE stream.
+      const reader = res.body.getReader();
+      const dec = new TextDecoder();
+      let buf = '', full = '', pendingTrace = null, streamErr = null;
+      const msgEl = appendMsg('assistant', '', true);
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buf += dec.decode(value, { stream: true });
+          const lines = buf.split('\n'); buf = lines.pop();
+          for (const line of lines) {
+            if (!line.startsWith('data:')) continue;
+            try {
+              const pl = JSON.parse(line.slice(5).trim());
+              if (pl.text) { full += pl.text; msgEl.querySelector('.msg-text').textContent = full; scrollChat(); pulse('core', 0.15); }
+              if (pl.trace) pendingTrace = pl.trace;
+            } catch (_) {}
+          }
+        }
+      } catch (e) { streamErr = e; }
+
+      // Stream died before producing any text → fall back to non-streaming.
+      if (!full && streamErr) {
+        msgEl.remove();
+        await nonStreamFallback(text);
+        return;
+      }
+      setTyping(false); pulse('core', 0.5); pulse('core_mem', 0.7);
+      if (pendingTrace) setTimeout(() => playTrace(pendingTrace), 150);
+      if (document.body.classList.contains('converse-mode'))
+        setTimeout(() => document.getElementById('chat-input').focus(), 80);
+      setTimeout(loadClaspionStatus, 800); setTimeout(loadProvenance, 1000);
+    } catch (e) {
+      // Network/other failure on the stream request → non-stream fallback.
+      try { await nonStreamFallback(text); }
+      catch (e2) { setTyping(false); appendMsg('assistant', 'Error: ' + (e2 && e2.message || e.message)); }
+    }
+  }
+
+  // Non-streaming fallback to /api/enhanced/chat. Keeps the same body shape and
+  // honours a governance block if the request gate returns one.
+  async function nonStreamFallback(text) {
+    const res = await authedFetch('/api/enhanced/chat', {
+      method: 'POST',
+      body: JSON.stringify({ message: text, sessionId }),
+    });
+    const body = await res.json().catch(() => null);
+    if (body && body.governance) { renderGovernance(body); return; }
+    if (!res.ok) { setTyping(false); appendMsg('assistant', 'Splendor is having trouble responding right now. Please try again.'); return; }
+    appendMsg('assistant', (body && (body.response || body.message)) || '(no response)');
+    setTyping(false); pulse('core', 0.5); pulse('core_mem', 0.6);
+    setTimeout(loadClaspionStatus, 800); setTimeout(loadProvenance, 1000);
+  }
+
+  // Render a governance BLOCK/CAUTION result inline (user-facing only — no raw
+  // internal objects or stack traces). Shows decision, recoverability, basis,
+  // and the short governance explanation.
+  function renderGovernance(payload) {
+    setTyping(false);
+    const g = payload.governance || {};
+    const decision = String(g.decision || 'BLOCK').toUpperCase();
+    const recoverable = g.recoverable;
+    const tag = decision === 'CAUTION' ? '⚠︎ CAUTION'
+      : '⛔ BLOCKED' + (recoverable === false ? ' · not recoverable' : recoverable === true ? ' · you can keep going' : '');
+    const basis = g.basis_state ? ' (' + String(g.basis_state) + ')' : '';
+    let msg = payload.message || payload.error || (decision === 'CAUTION'
+      ? 'Proceeding with care.'
+      : "I held back on that one. Try a different angle.");
+    if (typeof msg === 'string' && msg.length > 400) msg = msg.slice(0, 400) + '…';
+    appendMsg('assistant', tag + basis + '\n' + msg);
+    pulse('governance', 1);
+    setTimeout(loadClaspionStatus, 300);
+  }
+
+  function appendMsg(role, text, streaming) {
+    const msgs = document.getElementById('chat-messages');
+    const div = document.createElement('div');
+    div.className = 'msg ' + role;
+    div.innerHTML = streaming ? '<span class="msg-text"></span>' : '<span class="msg-text">' + esc(text) + '</span>';
+    msgs.appendChild(div); scrollChat(); return div;
+  }
+  function scrollChat() { const el = document.getElementById('chat-messages'); el.scrollTop = el.scrollHeight; }
+  function setTyping(on) {
+    typing = on;
+    document.getElementById('send-btn').disabled = on;
+    // The constellation firing is the real-time activity indicator now — the
+    // old "thinking" dots stay hidden.
+    const ti = document.getElementById('typing-ind');
+    if (ti) ti.style.display = 'none';
+    if (on) startFiring(); else stopFiring();
+  }
+
+  // ── CLASPION OVERLAY ──────────────────────────────────────────────────────
+  function toggleClaspion() {
+    if (!FLAGS.claspionCockpitEnabled) return;
+    claspionOpen = !claspionOpen;
+    document.getElementById('claspion-overlay').classList.toggle('hidden', !claspionOpen);
+    document.getElementById('badge-cockpit').classList.toggle('visible', claspionOpen);
+    if (claspionOpen) populateClaspion();
+  }
+
+  function populateClaspion() {
+    if (!lastDecision) { loadClaspionStatus().then(populateClaspionData); return; }
+    populateClaspionData();
+  }
+
+  function populateClaspionData() {
+    if (!lastDecision) return;
+    const dec = lastDecision.decision || {};
+    const d = (dec.decision_type || 'DORMANT').toUpperCase();
+    const cls = claspionDecisionClass(d);
+    const el = document.getElementById('cl-decision-text');
+    el.className = cls; el.textContent = d.replace(/_/g, ' ');
+    // Cockpit confidence is already a 0–100 percentage.
+    document.getElementById('cl-confidence').textContent = dec.confidence != null
+      ? 'confidence: ' + dec.confidence + '%' : 'confidence: —';
+    document.getElementById('cl-cls').textContent   = dec.original_classification || dec.context_category || '—';
+    document.getElementById('cl-ctx').textContent   = dec.context_category || '—';
+    document.getElementById('cl-basis').textContent = dec.risk_level || lastDecision.system_status || '—';
+    document.getElementById('cl-corr').textContent  = dec.decision_id || '—';
+    if (d !== 'DORMANT') ['clst2','clst3','clst4','clst5'].forEach(id => { const e=document.getElementById(id); if(e) e.classList.add('active'); });
+  }
+
+  function claspionExplain() {
+    const dec = (lastDecision && lastDecision.decision) || null;
+    if (!dec) { openDrawer('Decision Explanation', { Status: 'No governance decision recorded yet.' }); return; }
+    openDrawer('Decision Explanation', {
+      Decision: (dec.decision_type || '—').replace(/_/g, ' '),
+      Explanation: dec.reason || dec.evidence || 'No explanation available from last decision record.',
+      Confidence: dec.confidence != null ? dec.confidence + '%' : '—',
+      'Risk level': dec.risk_level || '—',
+      'Context category': dec.context_category || dec.original_classification || '—',
+      'Triggered rules': (dec.triggered_rules && dec.triggered_rules.length) ? dec.triggered_rules : 'none',
+      'Suggested next action': dec.suggested_safe_next_action || '—',
+      'Decision ID': dec.decision_id || '—',
+    });
+  }
+  function claspionEvidence() {
+    const dec = (lastDecision && lastDecision.decision) || {};
+    const rules = (lastDecision && Array.isArray(lastDecision.rules)) ? lastDecision.rules : [];
+    openDrawer('Evidence Stack', {
+      Evidence: dec.evidence || '—',
+      'User message': dec.user_message || '—',
+      'Surface mode': dec.surface_mode || '—',
+      'Triggered rules': (dec.triggered_rules && dec.triggered_rules.length) ? dec.triggered_rules : 'none',
+      'Active rules': rules.filter(r => r.status !== 'inactive').map(r => r.id + ' · ' + r.label),
+      'System status': (lastDecision && lastDecision.system_status) || '—',
+      Source: (lastDecision && lastDecision.using_mock) ? 'mock (no live decision yet)' : 'live decision store',
+    });
+  }
+  async function claspionAudit() {
+    try {
+      const trail = await api('/api/claspion/cockpit/audit');
+      if (!Array.isArray(trail) || !trail.length) { openDrawer('Audit Trail', { Status: 'No audit entries recorded yet.' }); return; }
+      const detail = {};
+      trail.slice(-12).reverse().forEach((e, i) => { detail['Entry ' + (trail.length - i)] = e; });
+      openDrawer('Audit Trail (' + trail.length + ' entries)', detail);
+    } catch (e) { openDrawer('Audit Trail', { Error: e.message }); }
+  }
+  function openCockpit() { window.open('/claspion-cockpit.html', '_blank'); }
+
+  function toggleConverse() {
+    const on = document.body.classList.toggle('converse-mode');
+    const btn = document.getElementById('btn-converse');
+    if (btn) btn.textContent = on ? '◉ CONVERSE' : '◎ CONVERSE';
+    if (on) setTimeout(() => document.getElementById('chat-input').focus(), 300);
+  }
+
+  // ── REPLAY OVERLAY ────────────────────────────────────────────────────────
+  function toggleReplay() {
+    if (!FLAGS.replayModeEnabled) return;
+    replayOpen = !replayOpen;
+    document.getElementById('replay-overlay').classList.toggle('hidden', !replayOpen);
+    document.getElementById('badge-replay').classList.toggle('visible', replayOpen);
+    if (replayOpen) populateReplay();
+  }
+
+  async function populateReplay() {
+    const stagesEl = document.getElementById('replay-stages');
+    stagesEl.innerHTML = '<div style="color:var(--text-dim);font-family:var(--mono);font-size:11px;padding:12px">Loading…</div>';
+    let last = null;
+    try { const rows = await api('/api/flight-recorder/timeline?limit=1'); last = rows && rows[0]; } catch (_) {}
+    const STAGES = [
+      { label:'USER MESSAGE RECEIVED',    key:'user_message' },
+      { label:'INTENT CLASSIFIED',        key:'intent_type' },
+      { label:'MEMORIES RETRIEVED',       key:'memory_sources_count' },
+      { label:'PROVENANCE CONSULTED',     key:'provenance_sources' },
+      { label:'REFLECTIONS CONSULTED',    key:'reflections_used' },
+      { label:'CLASPION DECISION',        key:'governance_decision' },
+      { label:'RESPONSE GENERATED',       key:'assistant_response' },
+      { label:'MEMORIES WRITTEN AFTER',   key:'memories_written' },
+    ];
+    stagesEl.innerHTML = '';
+    STAGES.forEach((s, i) => {
+      const val = last ? last[s.key] : null;
+      const div = document.createElement('div');
+      div.className = 'replay-stage';
+      div.innerHTML = `<div class="rs-num">${i+1}</div><div class="rs-body">
+        <div class="rs-label">${s.label}</div>
+        <div class="rs-content">${val != null
+          ? esc(String(val).slice(0,400))
+          : '<span class="rs-missing">⚠ Not recorded in this turn — partial replay. Full replay available when all stages are instrumented.</span>'}</div></div>`;
+      stagesEl.appendChild(div);
+      setTimeout(() => div.classList.add('revealed'), i * 120);
+    });
+    if (!last) stagesEl.innerHTML = '<div style="padding:20px;color:var(--text-dim);font-size:12px">No recorded turns available. Start a conversation and replay will show the interaction pipeline for the most recent turn.</div>';
+  }
+
+  // ── DETAIL DRAWER ─────────────────────────────────────────────────────────
+  // Format any value for display. Objects/arrays become pretty JSON instead of
+  // the useless "[object Object]". Empty/nullish values become an em dash.
+  function fmtVal(v) {
+    if (v === null || v === undefined || v === '') return '—';
+    if (typeof v === 'object') {
+      try { return JSON.stringify(v, null, 2); } catch (_) { return String(v); }
+    }
+    return String(v);
+  }
+  // CSP-safe replacement for inline onclick on dynamically-built panel items.
+  // The drawer payload is base64-encoded into a data attribute (no inline
+  // handler, no quote/unicode escaping hazards) and decoded by the delegated
+  // click listener. Returns the attributes string to splice into the markup.
+  function drawerAttr(title, payload) {
+    const json = JSON.stringify({ title, payload });
+    const b64 = btoa(String.fromCharCode.apply(null, new TextEncoder().encode(json)));
+    return `data-action="drawer" data-drawer="${b64}"`;
+  }
+  function decodeDrawer(b64) {
+    return JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(b64), c => c.charCodeAt(0))));
+  }
+
+  function openDrawer(title, data) {
+    document.getElementById('drawer-title').textContent = title;
+    const body = document.getElementById('drawer-body');
+    if (typeof data === 'object' && data !== null && !Array.isArray(data)) {
+      body.innerHTML = Object.entries(data).map(([k,v]) =>
+        `<div class="df"><div class="df-key">${esc(k)}</div><div class="df-val" style="white-space:pre-wrap">${esc(fmtVal(v))}</div></div>`
+      ).join('');
+    } else {
+      body.innerHTML = '<div class="df-val" style="white-space:pre-wrap">' + esc(fmtVal(data)) + '</div>';
+    }
+    document.getElementById('detail-drawer').classList.add('open');
+  }
+  function closeDrawer() { document.getElementById('detail-drawer').classList.remove('open'); }
+
+  // ── HELPERS ───────────────────────────────────────────────────────────────
+  function setDot(id, live) { const el=document.getElementById(id); if(el) el.classList.toggle('live',live); }
+  function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function returnToClassic() { window.location.href = '/classic'; }
+
+  // ── EVENT WIRING (CSP-safe) ────────────────────────────────────────────────
+  // No inline onclick anywhere (CSP: script-src-attr 'none'). Every interactive
+  // element carries a data-action; a single delegated listener dispatches it.
+  const ACTIONS = {
+    returnToClassic, sendMessage, toggleClaspion, toggleReplay, openCockpit,
+    toggleConverse, closeDrawer, claspionExplain, claspionEvidence, claspionAudit,
+  };
+  document.addEventListener('click', (e) => {
+    const el = e.target.closest('[data-action]');
+    if (!el) return;
+    const action = el.getAttribute('data-action');
+    if (action === 'drawer') {
+      try { const d = decodeDrawer(el.getAttribute('data-drawer')); openDrawer(d.title, d.payload); }
+      catch (_) {}
+      return;
+    }
+    const fn = ACTIONS[action];
+    if (fn) { e.preventDefault(); fn(); }
+  });
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+
+})();
+</script>
+</body>
+</html>

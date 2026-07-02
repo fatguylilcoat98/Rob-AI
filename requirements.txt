@@ -1,0 +1,12 @@
+# AUBS RAG v2.0 — governed personal RAG spine
+llama-index-core>=0.11
+llama-index-vector-stores-chroma>=0.2
+llama-index-embeddings-huggingface>=0.3
+chromadb>=0.5
+sentence-transformers>=3.0
+groq>=0.11
+gradio>=4.44
+pypdf>=4.0
+python-dotenv>=1.0
+requests>=2.31
+python-docx>=1.1
