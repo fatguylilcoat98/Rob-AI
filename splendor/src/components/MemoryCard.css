@@ -1,0 +1,77 @@
+.memory-card {
+  background: linear-gradient(135deg, rgba(15, 20, 30, 0.9), rgba(25, 30, 40, 0.8));
+  border: 1px solid rgba(0, 229, 255, 0.25);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.memory-card:hover {
+  border-color: rgba(0, 229, 255, 0.5);
+  transform: translateX(5px);
+  box-shadow: 0 6px 20px rgba(0, 229, 255, 0.2);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  font-size: 11px;
+  color: #00e5ff;
+  font-weight: 500;
+}
+
+.card-content {
+  color: #b0c4de;
+  font-size: 12px;
+  line-height: 1.4;
+  margin-bottom: 12px;
+}
+
+.card-metadata {
+  font-size: 10px;
+  color: #708090;
+  line-height: 1.3;
+  margin-bottom: 8px;
+}
+
+.warning-flag {
+  background: rgba(255, 152, 0, 0.15);
+  border-left: 3px solid #ff9800;
+  padding: 8px;
+  font-size: 10px;
+  color: #ffa726;
+  border-radius: 0 4px 4px 0;
+  line-height: 1.3;
+}
+
+@media (max-width: 720px) {
+  .memory-card {
+    padding: 9px 10px;
+    margin-bottom: 10px;
+    border-radius: 8px;
+  }
+  .memory-card:hover {
+    transform: none;
+  }
+  .card-header {
+    font-size: 9px;
+    margin-bottom: 6px;
+  }
+  .card-content {
+    font-size: 10px;
+    margin-bottom: 6px;
+  }
+  .card-metadata {
+    font-size: 8.5px;
+  }
+  .warning-flag {
+    padding: 5px 6px;
+    font-size: 8.5px;
+    line-height: 1.25;
+  }
+}

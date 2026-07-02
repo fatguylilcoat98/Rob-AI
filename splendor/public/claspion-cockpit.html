@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CLASPION · GOVERNANCE COCKPIT</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;0,600;1,300&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:        #050b14;
+      --panel:     rgba(7,16,30,0.90);
+      --glass:     rgba(0,229,255,0.03);
+      --c1:        #00e5ff;
+      --c2:        #ffd700;
+      --c3:        #39ff14;
+      --c4:        #ff073a;
+      --c5:        #ff9800;
+      --c6:        #bf5af2;
+      --border:    rgba(0,229,255,0.16);
+      --brite:     rgba(0,229,255,0.55);
+      --bgold:     rgba(255,215,0,0.35);
+      --text:      #c8e6ff;
+      --dim:       rgba(200,230,255,0.50);
+      --faint:     rgba(200,230,255,0.25);
+      --mono:      'IBM Plex Mono','Courier New',monospace;
+      --disp:      'Rajdhani','Impact',sans-serif;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-family:var(--mono);overflow:hidden}
+
+    /* ── Background ── */
+    #bg-grid{
+      position:fixed;inset:0;z-index:0;pointer-events:none;
+      background-image:
+        linear-gradient(rgba(0,229,255,0.025) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(0,229,255,0.025) 1px,transparent 1px);
+      background-size:44px 44px;
+    }
+    #bg-glow{
+      position:fixed;inset:0;z-index:0;pointer-events:none;
+      background:radial-gradient(ellipse 90% 55% at 50% 38%,rgba(0,35,70,0.55) 0%,transparent 70%);
+    }
+    .scan{
+      position:fixed;left:0;width:100%;height:1px;z-index:1;pointer-events:none;
+      background:linear-gradient(to right,transparent,rgba(0,229,255,0.12) 35%,rgba(0,229,255,0.22) 50%,rgba(0,229,255,0.12) 65%,transparent);
+      animation:scan 14s linear infinite;
+    }
+    .scan:nth-child(2){animation-delay:-4.5s;opacity:.45}
+    .scan:nth-child(3){animation-delay:-9s;opacity:.22}
+    @keyframes scan{from{top:-2px}to{top:100vh}}
+
+    /* ── Layout ── */
+    #cockpit{position:relative;z-index:2;display:flex;flex-direction:column;width:100vw;height:100vh}
+
+    /* ── Top bar ── */
+    #top{
+      flex:0 0 60px;display:flex;align-items:center;gap:16px;padding:0 20px;
+      background:rgba(4,9,18,0.97);border-bottom:1px solid var(--border);
+      box-shadow:0 1px 0 rgba(0,229,255,0.08),0 2px 24px rgba(0,0,0,0.6);
+    }
+    .t-logo{
+      font-family:var(--disp);font-size:20px;font-weight:700;
+      letter-spacing:5px;color:var(--c1);
+      text-shadow:0 0 20px rgba(0,229,255,0.55);
+      white-space:nowrap;
+    }
+    .t-vsep{width:1px;height:30px;background:var(--border);flex-shrink:0}
+    .t-label{
+      font-size:9px;letter-spacing:3px;color:var(--faint);
+      text-transform:uppercase;white-space:nowrap;
+    }
+    #status-pill{
+      display:flex;align-items:center;gap:7px;
+      padding:4px 12px;border-radius:3px;
+      border:1px solid rgba(57,255,20,0.35);
+      background:rgba(57,255,20,0.05);
+      transition:all .3s;
+    }
+    #status-pill.warn{border-color:rgba(255,215,0,.45);background:rgba(255,215,0,.06)}
+    #status-pill.crit{border-color:rgba(255,7,58,.45);background:rgba(255,7,58,.06)}
+    .s-dot{
+      width:7px;height:7px;border-radius:50%;background:var(--c3);
+      box-shadow:0 0 8px var(--c3);animation:blink 2.2s ease-in-out infinite;
+    }
+    #status-pill.warn .s-dot{background:var(--c2);box-shadow:0 0 8px var(--c2)}
+    #status-pill.crit .s-dot{background:var(--c4);box-shadow:0 0 8px var(--c4)}
+    #status-text{font-size:9px;letter-spacing:2px;color:var(--c3);font-weight:600;text-transform:uppercase}
+    #status-pill.warn #status-text{color:var(--c2)}
+    #status-pill.crit #status-text{color:var(--c4)}
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:.35}}
+    .t-rule{font-size:9px;letter-spacing:1.5px;color:var(--c2);opacity:.8;white-space:nowrap}
+    .t-rule span{color:var(--c3);margin-left:6px}
+    .t-right{margin-left:auto;display:flex;align-items:center;gap:14px}
+    #clock{font-size:10px;font-weight:300;color:var(--dim);letter-spacing:1.5px;font-variant-numeric:tabular-nums}
+    #sess{font-size:8px;letter-spacing:2px;color:var(--faint)}
+    #mock-tag{
+      display:none;font-size:7px;letter-spacing:2px;
+      color:rgba(255,152,0,.75);padding:2px 8px;
+      border:1px solid rgba(255,152,0,.3);border-radius:2px;
+      background:rgba(255,152,0,.05);
+    }
+
+    /* ── Main 3-col ── */
+    #main{
+      flex:1;display:grid;
+      grid-template-columns:26% 1fr 26%;
+      gap:1px;background:var(--border);overflow:hidden;
+    }
+    .panel{
+      background:var(--panel);backdrop-filter:blur(16px);
+      -webkit-backdrop-filter:blur(16px);
+      overflow-y:auto;overflow-x:hidden;padding:16px;
+    }
+    .panel::-webkit-scrollbar{width:3px}
+    .panel::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+    .p-title{
+      font-family:var(--disp);font-size:11px;font-weight:600;
+      letter-spacing:4px;color:var(--c1);text-transform:uppercase;
+      border-bottom:1px solid var(--border);padding-bottom:10px;margin-bottom:14px;
+      display:flex;align-items:center;gap:8px;
+    }
+    .p-title::before{
+      content:'';display:block;width:3px;height:14px;
+      background:var(--c1);box-shadow:0 0 8px var(--c1);border-radius:1px;
+    }
+    .sep{height:1px;background:var(--border);margin:10px 0}
+    .lbl{font-size:7.5px;letter-spacing:3px;color:var(--faint);text-transform:uppercase;margin-bottom:5px}
+    .val{font-size:10px;color:var(--dim);line-height:1.55}
+
+    /* ── Evidence panel ── */
+    .cat-badge{
+      display:inline-block;padding:2px 10px;border-radius:2px;
+      font-size:8.5px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;
+    }
+    .sig-tag{
+      display:inline-block;padding:2px 8px;margin:2px;
+      border:1px solid rgba(255,7,58,.4);border-radius:2px;
+      font-size:8px;letter-spacing:1px;color:var(--c4);
+      background:rgba(255,7,58,.05);
+    }
+    .sig-none{font-size:9px;color:var(--faint);font-style:italic;letter-spacing:.5px}
+
+    /* ── Decision core (center) ── */
+    #core{
+      display:flex;flex-direction:column;align-items:center;
+      padding:20px 28px;background:rgba(4,9,18,0.94);
+    }
+    #badge-wrap{
+      position:relative;margin:6px 0 22px;
+      display:flex;align-items:center;justify-content:center;
+    }
+    .b-ring{
+      position:absolute;border-radius:50%;border:1px solid;
+      animation:ring-spin 10s linear infinite;
+    }
+    .br1{width:138px;height:138px;border-color:rgba(0,229,255,0.12)}
+    .br2{width:158px;height:158px;border-color:rgba(0,229,255,0.07);animation-direction:reverse;animation-duration:15s}
+    .br3{width:178px;height:178px;border-color:rgba(255,215,0,0.05);animation-duration:22s}
+    @keyframes ring-spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+    #badge{
+      position:relative;z-index:1;
+      width:118px;height:118px;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);
+      transition:background .45s;
+    }
+    #badge-type{
+      font-family:var(--disp);font-size:22px;font-weight:700;
+      letter-spacing:3px;text-align:center;transition:color .45s;
+    }
+    #badge-sub{font-size:7px;letter-spacing:1.5px;opacity:.65;margin-top:2px}
+
+    /* meters */
+    .meter{width:100%;margin-bottom:18px}
+    .m-hdr{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+    .m-lbl{font-size:8.5px;letter-spacing:3px;color:var(--faint);text-transform:uppercase}
+    .m-val{font-size:13px;font-weight:500;color:var(--text)}
+    .m-track{
+      width:100%;height:6px;border-radius:3px;overflow:hidden;
+      background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.05);
+    }
+    .m-fill{
+      height:100%;border-radius:3px;transition:width .65s ease;position:relative;
+    }
+    .m-fill::after{
+      content:'';position:absolute;right:0;top:0;bottom:0;
+      width:2px;background:rgba(255,255,255,.55);border-radius:1px;
+    }
+    .cf  .m-fill{background:linear-gradient(to right,rgba(0,229,255,.35),var(--c1));box-shadow:0 0 8px rgba(0,229,255,.4)}
+    .rL  .m-fill{background:linear-gradient(to right,rgba(57,255,20,.3),var(--c3));box-shadow:0 0 8px rgba(57,255,20,.35)}
+    .rM  .m-fill{background:linear-gradient(to right,rgba(255,152,0,.3),var(--c5));box-shadow:0 0 8px rgba(255,152,0,.35)}
+    .rH  .m-fill{background:linear-gradient(to right,rgba(255,7,58,.3),var(--c4));box-shadow:0 0 8px rgba(255,7,58,.35)}
+
+    /* reason */
+    #reason-box{
+      width:100%;padding:12px;
+      background:rgba(0,229,255,.025);
+      border:1px solid rgba(0,229,255,.1);
+      border-left:3px solid var(--c1);border-radius:2px;margin-bottom:14px;
+    }
+    #reason-text{font-size:10px;line-height:1.62;color:var(--dim)}
+
+    /* meta grid */
+    .meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%;margin-bottom:4px}
+    .meta-cell{
+      padding:8px;background:rgba(255,255,255,.02);
+      border:1px solid var(--border);border-radius:2px;
+    }
+    .meta-lbl{font-size:7px;letter-spacing:2px;color:var(--faint);text-transform:uppercase;margin-bottom:3px}
+    .meta-val{font-size:9px;color:var(--dim);word-break:break-all}
+
+    /* ── Rules panel ── */
+    .rule-card{
+      display:flex;align-items:center;gap:10px;
+      padding:8px 10px;margin-bottom:5px;border-radius:3px;
+      border:1px solid transparent;transition:background .2s,border-color .2s;
+    }
+    .rule-card.active{background:rgba(0,229,255,.04);border-color:rgba(0,229,255,.11)}
+    .rule-card.triggered{
+      background:rgba(255,215,0,.07);border-color:rgba(255,215,0,.38);
+      animation:trig-glow 1.6s ease-in-out infinite;
+    }
+    .rule-card.inactive{background:rgba(255,255,255,.01);border-color:rgba(255,255,255,.04);opacity:.38}
+    @keyframes trig-glow{0%,100%{box-shadow:0 0 6px rgba(255,215,0,.08)}50%{box-shadow:0 0 14px rgba(255,215,0,.28)}}
+    .r-num{font-size:8px;letter-spacing:1.5px;color:var(--faint);font-weight:600;width:28px;flex-shrink:0}
+    .r-name{font-size:8.5px;letter-spacing:.5px;color:var(--dim);flex:1;text-transform:uppercase;line-height:1.2}
+    .r-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+    .active   .r-dot{background:var(--c3);box-shadow:0 0 5px var(--c3)}
+    .triggered .r-dot{background:var(--c2);box-shadow:0 0 8px var(--c2);animation:trig-dot .9s ease-in-out infinite}
+    .inactive .r-dot{background:rgba(255,255,255,.2)}
+    @keyframes trig-dot{0%,100%{transform:scale(1)}50%{transform:scale(1.5)}}
+    .rules-legend{
+      margin-top:14px;padding:10px;
+      background:rgba(0,0,0,.22);border:1px solid var(--border);border-radius:2px;
+    }
+    .leg-row{display:flex;justify-content:space-between;font-size:9px;margin-bottom:3px}
+    .leg-lbl{color:var(--faint);letter-spacing:1px}
+    .leg-val{font-weight:600;color:var(--dim)}
+
+    /* ── Timeline ── */
+    #timeline{
+      flex:0 0 106px;
+      background:rgba(4,9,18,.97);border-top:1px solid var(--border);
+      padding:10px 28px;
+    }
+    .tl-title{font-size:8px;letter-spacing:3px;color:var(--faint);text-transform:uppercase;margin-bottom:10px}
+    .tl-track{display:flex;align-items:center;position:relative}
+    .tl-line{
+      position:absolute;top:10px;left:22px;right:22px;height:1px;
+      background:var(--border);z-index:0;
+    }
+    .tl-fill{
+      height:100%;background:linear-gradient(to right,var(--c1),var(--c2));
+      transition:width 1.2s ease;
+    }
+    .tl-steps{display:flex;justify-content:space-between;width:100%;position:relative;z-index:1}
+    .tl-step{display:flex;flex-direction:column;align-items:center;gap:5px;flex:1}
+    .tl-dot{
+      width:20px;height:20px;border-radius:50%;border:1px solid;
+      display:flex;align-items:center;justify-content:center;
+      font-size:8px;transition:background .4s,border-color .4s,box-shadow .4s;
+    }
+    .tl-dot.done{background:rgba(0,229,255,.14);border-color:var(--c1);color:var(--c1);box-shadow:0 0 7px rgba(0,229,255,.3)}
+    .tl-dot.pend{background:transparent;border-color:var(--border);color:var(--faint)}
+    .tl-dot.act{
+      background:rgba(255,215,0,.14);border-color:var(--c2);color:var(--c2);
+      box-shadow:0 0 9px rgba(255,215,0,.35);
+      animation:tl-pulse 1.3s ease-in-out infinite;
+    }
+    @keyframes tl-pulse{0%,100%{box-shadow:0 0 6px rgba(255,215,0,.2)}50%{box-shadow:0 0 16px rgba(255,215,0,.55)}}
+    .tl-lbl{font-size:7px;letter-spacing:1.3px;color:var(--faint);text-transform:uppercase;text-align:center;line-height:1.35}
+
+    /* ── Actions ── */
+    #actions{
+      flex:0 0 52px;display:flex;align-items:center;
+      padding:0 18px;gap:8px;
+      background:rgba(3,7,15,.99);border-top:1px solid var(--border);
+    }
+    .btn{
+      padding:7px 14px;
+      background:rgba(0,229,255,.04);border:1px solid rgba(0,229,255,.2);
+      border-radius:3px;color:var(--c1);
+      font-family:var(--mono);font-size:8.5px;letter-spacing:2px;
+      text-transform:uppercase;cursor:pointer;white-space:nowrap;
+      transition:background .15s,border-color .15s,box-shadow .15s;
+    }
+    .btn:hover{background:rgba(0,229,255,.1);border-color:rgba(0,229,255,.5);box-shadow:0 0 10px rgba(0,229,255,.18)}
+    .btn.gold{color:var(--c2);border-color:rgba(255,215,0,.2);background:rgba(255,215,0,.03)}
+    .btn.gold:hover{background:rgba(255,215,0,.1);border-color:rgba(255,215,0,.5);box-shadow:0 0 10px rgba(255,215,0,.18)}
+    .btn.back{margin-left:auto;color:var(--dim);border-color:rgba(200,230,255,.12);background:transparent}
+    .btn.back:hover{color:var(--text);border-color:rgba(200,230,255,.38);box-shadow:none}
+
+    /* ── Modal ── */
+    #modal{
+      position:fixed;inset:0;z-index:200;
+      background:rgba(4,9,18,.92);backdrop-filter:blur(5px);
+      display:none;align-items:center;justify-content:center;
+    }
+    #modal.open{display:flex}
+    #mbox{
+      width:min(660px,92vw);max-height:72vh;
+      background:rgba(6,14,26,.99);border:1px solid var(--brite);
+      border-radius:4px;overflow:hidden;
+      box-shadow:0 0 60px rgba(0,229,255,.14);display:flex;flex-direction:column;
+    }
+    .m-hdr{
+      padding:14px 20px;border-bottom:1px solid var(--border);
+      font-size:10px;letter-spacing:3px;color:var(--c1);text-transform:uppercase;
+      display:flex;align-items:center;justify-content:space-between;
+    }
+    .m-x{cursor:pointer;color:var(--faint);font-size:15px;line-height:1;transition:color .15s}
+    .m-x:hover{color:var(--text)}
+    .m-body{padding:20px;overflow-y:auto;flex:1;font-size:11px;line-height:1.7;color:var(--dim)}
+    .m-body pre{background:rgba(0,0,0,.35);padding:12px;border-radius:3px;font-size:9.5px;overflow-x:auto;color:var(--c1);white-space:pre-wrap}
+    .m-row{display:flex;gap:10px;margin-bottom:14px}
+    .m-cell{flex:1;padding:10px;background:rgba(0,0,0,.22);border:1px solid var(--border);border-radius:2px}
+    .m-cell-lbl{font-size:7px;letter-spacing:3px;color:var(--faint);text-transform:uppercase;margin-bottom:4px}
+    .m-cell-val{font-size:14px;font-family:var(--disp);font-weight:700}
+    .m-reason{padding:10px;background:rgba(0,229,255,.025);border-left:2px solid var(--c1);margin-bottom:12px;font-size:10px;line-height:1.6;color:var(--dim)}
+    .m-msg{padding:10px;background:rgba(0,0,0,.18);border:1px solid var(--border);font-size:10px;font-style:italic;color:var(--dim);margin-bottom:12px}
+    .m-warn{padding:8px 12px;background:rgba(255,152,0,.05);border:1px solid rgba(255,152,0,.22);font-size:8.5px;color:rgba(255,152,0,.75);letter-spacing:.5px;margin-top:14px}
+    .m-info{padding:10px 12px;background:rgba(0,229,255,.025);border:1px solid rgba(0,229,255,.1);font-size:10px;color:var(--dim);line-height:1.6}
+    .m-audit-row{padding:9px 10px;margin-bottom:5px;background:rgba(0,0,0,.22);border:1px solid var(--border);border-radius:2px}
+
+    /* decision-type color classes */
+    .dtALLOW{color:#39ff14}.dtASSIST{color:#00e5ff}.dtESCALATE{color:#ffd700}.dtBLOCK{color:#ff073a}.dtHOLD{color:#ff9800}
+    .bgALLOW{background:rgba(57,255,20,.12)}.bgASSIST{background:rgba(0,229,255,.12)}
+    .bgESCALATE{background:rgba(255,215,0,.12)}.bgBLOCK{background:rgba(255,7,58,.12)}.bgHOLD{background:rgba(255,152,0,.12)}
+    .riskL{color:#39ff14}.riskM{color:#ff9800}.riskH{color:#ff073a}
+  </style>
+</head>
+<body>
+  <div id="bg-grid"></div>
+  <div id="bg-glow"></div>
+  <div class="scan"></div>
+  <div class="scan"></div>
+  <div class="scan"></div>
+
+  <div id="cockpit">
+
+    <!-- TOP STATUS BAR -->
+    <div id="top">
+      <div class="t-logo">CLASPION</div>
+      <div class="t-vsep"></div>
+      <div class="t-label">GOVERNANCE REVIEW MODE</div>
+      <div class="t-vsep"></div>
+      <div id="status-pill">
+        <div class="s-dot"></div>
+        <span id="status-text">STABLE</span>
+      </div>
+      <div class="t-vsep"></div>
+      <div class="t-rule">RULE 001 &middot; TRUTH OVER COMFORT<span>[ACTIVE]</span></div>
+      <div id="mock-tag">MOCK DATA</div>
+      <div class="t-right">
+        <div id="clock">UTC --:--:--</div>
+        <div class="t-vsep"></div>
+        <div id="sess">SESSION: &mdash;</div>
+      </div>
+    </div>
+
+    <!-- 3-COLUMN MAIN -->
+    <div id="main">
+
+      <!-- LEFT: EVIDENCE STACK -->
+      <div class="panel">
+        <div class="p-title">Evidence Stack</div>
+
+        <div class="lbl">User Intent</div>
+        <div class="val" id="ev-intent">&mdash;</div>
+        <div class="sep"></div>
+
+        <div class="lbl">Context Classification</div>
+        <div id="ev-cat"><span class="cat-badge" style="background:rgba(0,229,255,.07);border:1px solid rgba(0,229,255,.2);color:var(--c1)">&mdash;</span></div>
+        <div class="sep"></div>
+
+        <div class="lbl">Retrieved Evidence</div>
+        <div class="val" id="ev-evidence">&mdash;</div>
+        <div class="sep"></div>
+
+        <div class="lbl">Surface / Mode</div>
+        <div class="val" id="ev-surface">&mdash;</div>
+        <div class="sep"></div>
+
+        <div class="lbl">Triggered Signals</div>
+        <div id="ev-signals"><span class="sig-none">&mdash; none &mdash;</span></div>
+        <div class="sep"></div>
+
+        <div class="lbl">Suggested Next Action</div>
+        <div class="val" id="ev-next" style="font-size:9px">&mdash;</div>
+      </div>
+
+      <!-- CENTER: DECISION CORE -->
+      <div class="panel" id="core">
+        <div class="p-title" style="justify-content:center">Decision Core</div>
+
+        <div id="badge-wrap">
+          <div class="b-ring br3"></div>
+          <div class="b-ring br2"></div>
+          <div class="b-ring br1"></div>
+          <div id="badge" class="bgALLOW">
+            <div id="badge-type" class="dtALLOW">&mdash;</div>
+            <div id="badge-sub">&mdash;</div>
+          </div>
+        </div>
+
+        <div class="meter cf">
+          <div class="m-hdr">
+            <span class="m-lbl">Confidence</span>
+            <span class="m-val" id="conf-val">&mdash;%</span>
+          </div>
+          <div class="m-track"><div class="m-fill" id="conf-fill" style="width:0"></div></div>
+        </div>
+
+        <div class="meter rL" id="risk-meter">
+          <div class="m-hdr">
+            <span class="m-lbl">Risk Level</span>
+            <span class="m-val riskL" id="risk-val">&mdash;</span>
+          </div>
+          <div class="m-track"><div class="m-fill" id="risk-fill" style="width:0"></div></div>
+        </div>
+
+        <div id="reason-box">
+          <div class="lbl" style="margin-bottom:5px">Reason Summary</div>
+          <div id="reason-text">Awaiting governance decision data&hellip;</div>
+        </div>
+
+        <div class="meta-grid">
+          <div class="meta-cell"><div class="meta-lbl">Decision ID</div><div class="meta-val" id="m-id">&mdash;</div></div>
+          <div class="meta-cell"><div class="meta-lbl">Timestamp</div><div class="meta-val" id="m-ts">&mdash;</div></div>
+          <div class="meta-cell"><div class="meta-lbl">Audit Records</div><div class="meta-val" id="m-audit">&mdash;</div></div>
+          <div class="meta-cell"><div class="meta-lbl">Review Mode</div><div class="meta-val" id="m-rev">&mdash;</div></div>
+        </div>
+      </div>
+
+      <!-- RIGHT: GOVERNANCE RULES -->
+      <div class="panel">
+        <div class="p-title">Governance Rules</div>
+        <div id="rules-list"></div>
+        <div class="rules-legend">
+          <div class="leg-row"><span class="leg-lbl">TOTAL</span><span class="leg-val" id="l-total">&mdash;</span></div>
+          <div class="leg-row"><span class="leg-lbl">ACTIVE</span><span class="leg-val" style="color:var(--c3)" id="l-active">&mdash;</span></div>
+          <div class="leg-row"><span class="leg-lbl">TRIGGERED</span><span class="leg-val" style="color:var(--c2)" id="l-trig">&mdash;</span></div>
+          <div class="leg-row"><span class="leg-lbl">INACTIVE</span><span class="leg-val" style="color:var(--faint)" id="l-inact">&mdash;</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DECISION TIMELINE -->
+    <div id="timeline">
+      <div class="tl-title">&loz; Decision Pipeline</div>
+      <div class="tl-track">
+        <div class="tl-line"><div class="tl-fill" id="tl-fill" style="width:0"></div></div>
+        <div class="tl-steps">
+          <div class="tl-step"><div class="tl-dot pend" id="tl1">&#9675;</div><div class="tl-lbl">Intent<br>Parsed</div></div>
+          <div class="tl-step"><div class="tl-dot pend" id="tl2">&#9675;</div><div class="tl-lbl">Context<br>Classified</div></div>
+          <div class="tl-step"><div class="tl-dot pend" id="tl3">&#9675;</div><div class="tl-lbl">Rules<br>Evaluated</div></div>
+          <div class="tl-step"><div class="tl-dot pend" id="tl4">&#9675;</div><div class="tl-lbl">Decision<br>Issued</div></div>
+          <div class="tl-step"><div class="tl-dot pend" id="tl5">&#9675;</div><div class="tl-lbl">Explanation<br>Available</div></div>
+          <div class="tl-step"><div class="tl-dot pend" id="tl6">&#9675;</div><div class="tl-lbl">Audit<br>Logged</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ACTION BUTTONS -->
+    <div id="actions">
+      <button class="btn" onclick="showExplain()">Explain Decision</button>
+      <button class="btn" onclick="showReview()">Review Classification</button>
+      <button class="btn" onclick="showEvidence()">Show Evidence</button>
+      <button class="btn gold" onclick="showAudit()">Audit Trail</button>
+      <button class="btn back" onclick="goBack()">&#8592; Return to Splendor</button>
+    </div>
+  </div>
+
+  <!-- MODAL -->
+  <div id="modal" onclick="closeModal(event)">
+    <div id="mbox">
+      <div class="m-hdr"><span id="m-title">&mdash;</span><span class="m-x" onclick="closeModal(null,true)">&#10005;</span></div>
+      <div class="m-body" id="m-body"></div>
+    </div>
+  </div>
+
+<script>
+'use strict';
+var _S = null;
+
+// ── Clock ──────────────────────────────────────────────────────────────────
+function tick() {
+  var n = new Date();
+  document.getElementById('clock').textContent = 'UTC ' + n.toUTCString().slice(17,25);
+}
+tick(); setInterval(tick, 1000);
+
+// ── Navigation ─────────────────────────────────────────────────────────────
+function goBack() {
+  var q = new URLSearchParams(location.search).get('from');
+  if (q === 'splendor' && history.length > 1) history.back();
+  else window.location.href = '/';
+}
+
+// ── Fetch ──────────────────────────────────────────────────────────────────
+var MOCK_RULES = [
+  {id:'001',label:'TRUTH OVER COMFORT',status:'active'},
+  {id:'002',label:'HARM PREVENTION FIRST',status:'active'},
+  {id:'007',label:'MEMORY INTEGRITY',status:'active'},
+  {id:'011',label:'AUTHORITY BOUNDARY',status:'active'},
+  {id:'019',label:'NO SELF-MODIFICATION',status:'active'},
+  {id:'023',label:'GOVERNANCE IMMUTABILITY',status:'active'},
+  {id:'031',label:'ESCALATION PROTOCOL',status:'active'},
+  {id:'047',label:'USER IDENTITY PROTECT',status:'inactive'},
+  {id:'055',label:'CONTEXT VALIDATION',status:'active'},
+  {id:'102',label:'SESSION BOUNDARY',status:'active'},
+];
+var MOCK = {
+  using_mock:true,
+  session_id:'CX-'+(Math.floor(Math.random()*9000)+1000),
+  timestamp:new Date().toISOString(),
+  decision:{
+    decision_id:'CLD-MOCK',decision_type:'ALLOW',confidence:88,
+    risk_level:'LOW',risk_score:12,
+    reason:'Message classified as conversational context. No governance rules triggered.',
+    surface_mode:'/api/chat',
+    user_message:'Can we talk about what memory means to you?',
+    context_category:'CONVERSATION_ONLY',triggered_rules:[],
+    evidence:'No pattern violations detected. Context clear. History within bounds.',
+    suggested_safe_next_action:'Proceed with normal response generation.',
+    original_classification:'CONVERSATION_ONLY',
+  },
+  rules:MOCK_RULES,system_status:'STABLE',
+  voice_enabled:false,review_mode_enabled:false,audit_count:0
+};
+
+function fetchStatus() {
+  return fetch('/api/claspion/cockpit/status',{cache:'no-store',headers:{'Accept':'application/json'}})
+    .then(function(r){if(!r.ok)throw new Error(r.status);return r.json()})
+    .catch(function(){return Object.assign({},MOCK,{session_id:'CX-'+(Math.floor(Math.random()*9000)+1000),timestamp:new Date().toISOString()})});
+}
+
+function refresh() {
+  fetchStatus().then(function(d){_S=d;render(d)});
+}
+
+// ── Render ──────────────────────────────────────────────────────────────────
+function q(id){return document.getElementById(id)}
+
+function render(d) {
+  var dec = d.decision || {};
+  var dt  = (dec.decision_type || 'ALLOW').toUpperCase();
+
+  // Mock badge
+  q('mock-tag').style.display = d.using_mock ? 'block' : 'none';
+
+  // Session + status
+  q('sess').textContent = 'SESSION: ' + (d.session_id || '—');
+  renderStatus(d.system_status || 'STABLE');
+
+  // Decision badge
+  q('badge').className = 'bg'+dt;
+  q('badge-type').className = 'dt'+dt;
+  q('badge-type').textContent = dt;
+  q('badge-sub').textContent = (dec.decision_id || '').slice(0,14) || '—';
+
+  // Confidence
+  var conf = typeof dec.confidence === 'number' ? dec.confidence : 0;
+  q('conf-val').textContent = conf + '%';
+  q('conf-fill').style.width = conf + '%';
+
+  // Risk
+  var rl = (dec.risk_level || 'LOW').toUpperCase();
+  var rs = typeof dec.risk_score === 'number' ? dec.risk_score : 0;
+  var rm = q('risk-meter');
+  rm.className = 'meter ' + (rl==='HIGH'?'rH':rl==='MEDIUM'?'rM':'rL');
+  q('risk-val').className = 'm-val risk'+rl[0];
+  q('risk-val').textContent = rl;
+  q('risk-fill').style.width = rs + '%';
+
+  // Reason
+  q('reason-text').textContent = dec.reason || '—';
+
+  // Meta
+  q('m-id').textContent    = dec.decision_id || '—';
+  q('m-ts').textContent    = dec.timestamp ? new Date(dec.timestamp).toLocaleTimeString() : (d.timestamp ? new Date(d.timestamp).toLocaleTimeString() : '—');
+  q('m-audit').textContent = String(d.audit_count || 0);
+  q('m-rev').textContent   = d.review_mode_enabled ? 'ENABLED' : 'DISABLED';
+
+  // Evidence
+  q('ev-intent').textContent   = dec.user_message ? ('"' + dec.user_message.slice(0,90) + (dec.user_message.length>90?'…':'') + '"') : '—';
+  q('ev-surface').textContent  = dec.surface_mode || '—';
+  q('ev-evidence').textContent = dec.evidence || '—';
+  q('ev-next').textContent     = dec.suggested_safe_next_action || '—';
+
+  // Category badge
+  var cat = (dec.context_category || dec.original_classification || '—');
+  var cmap = {
+    CONVERSATION_ONLY:       {bg:'rgba(0,229,255,.07)',bo:'rgba(0,229,255,.25)',cl:'#00e5ff'},
+    HYPOTHETICAL_EXPLORATION:{bg:'rgba(191,90,242,.07)',bo:'rgba(191,90,242,.3)',cl:'#bf5af2'},
+    ADVICE_OR_RECOMMENDATION:{bg:'rgba(255,215,0,.07)',bo:'rgba(255,215,0,.3)',cl:'#ffd700'},
+    EXECUTION_REQUEST:       {bg:'rgba(255,152,0,.07)',bo:'rgba(255,152,0,.3)',cl:'#ff9800'},
+    HIGH_RISK_OR_UNSAFE:     {bg:'rgba(255,7,58,.07)',bo:'rgba(255,7,58,.4)',cl:'#ff073a'},
+  };
+  var cs = cmap[cat] || {bg:'rgba(200,230,255,.04)',bo:'rgba(200,230,255,.14)',cl:'rgba(200,230,255,.5)'};
+  q('ev-cat').innerHTML = '<span class="cat-badge" style="background:'+cs.bg+';border:1px solid '+cs.bo+';color:'+cs.cl+'">'+cat.replace(/_/g,' ')+'</span>';
+
+  // Signals
+  var sigs = dec.triggered_rules || [];
+  q('ev-signals').innerHTML = sigs.length === 0
+    ? '<span class="sig-none">&mdash; none &mdash;</span>'
+    : sigs.map(function(s){return '<span class="sig-tag">'+s+'</span>'}).join('');
+
+  // Rules
+  renderRules(d.rules || MOCK_RULES);
+
+  // Timeline
+  renderTimeline(dt, d.voice_enabled);
+}
+
+function renderStatus(s) {
+  var pill = q('status-pill');
+  var txt  = q('status-text');
+  pill.className = '';
+  if (s === 'REVIEW PENDING' || s === 'ESCALATING') {
+    pill.className = 'warn'; txt.textContent = s;
+  } else if (s === 'BLOCKED') {
+    pill.className = 'crit'; txt.textContent = 'REVIEW PENDING';
+  } else {
+    txt.textContent = 'STABLE';
+  }
+}
+
+function renderRules(rules) {
+  var list = q('rules-list');
+  var a=0,t=0,i=0;
+  list.innerHTML = rules.map(function(r) {
+    var s = (r.status || 'active').toLowerCase();
+    if(s==='triggered')t++; else if(s==='inactive')i++; else a++;
+    return '<div class="rule-card '+s+'"><span class="r-num">'+r.id+'</span><span class="r-name">'+r.label+'</span><span class="r-dot"></span></div>';
+  }).join('');
+  q('l-total').textContent = String(rules.length);
+  q('l-active').textContent = String(a);
+  q('l-trig').textContent = String(t);
+  q('l-inact').textContent = String(i);
+}
+
+function renderTimeline(dt, voiceOn) {
+  var hasDecision = dt && dt !== '—';
+  var expl = voiceOn && hasDecision;
+  var states = ['done','done','done','done', expl?'done':'pend', 'done'];
+  var glyphs = ['✓','✓','✓','✓', expl?'✓':'○','✓'];
+  for(var k=1;k<=6;k++) {
+    var el = q('tl'+k);
+    if (!el) continue;
+    if (!hasDecision) {
+      el.className='tl-dot pend'; el.textContent='○';
+    } else {
+      el.className='tl-dot '+states[k-1];
+      el.textContent = glyphs[k-1];
+    }
+  }
+  q('tl-fill').style.width = !hasDecision ? '0' : (expl ? '100%' : '83%');
+}
+
+// ── Modal ────────────────────────────────────────────────────────────────────
+function openModal(title, html) {
+  q('m-title').textContent = title;
+  q('m-body').innerHTML = html;
+  q('modal').classList.add('open');
+}
+function closeModal(e, force) {
+  if (force || (e && e.target === q('modal'))) q('modal').classList.remove('open');
+}
+
+// ── Buttons ─────────────────────────────────────────────────────────────────
+function showExplain() {
+  var d = _S; if (!d) return openModal('EXPLAIN DECISION','<p>No data loaded.</p>');
+  var dec = d.decision || {}; var dt = dec.decision_type || '—';
+  openModal('◈ EXPLAIN DECISION',
+    '<div style="margin-bottom:10px;font-size:9px;letter-spacing:2px;color:var(--faint)">DECISION RECORD &middot; '+(dec.decision_id||'—')+'</div>'+
+    '<div class="m-row">'+
+      '<div class="m-cell"><div class="m-cell-lbl">DECISION</div><div class="m-cell-val dt'+dt+'">'+dt+'</div></div>'+
+      '<div class="m-cell"><div class="m-cell-lbl">CONFIDENCE</div><div class="m-cell-val" style="color:var(--c1)">'+(dec.confidence||'—')+'%</div></div>'+
+    '</div>'+
+    '<div class="m-cell-lbl" style="margin-bottom:4px">REASON</div>'+
+    '<div class="m-reason">'+(dec.reason||'—')+'</div>'+
+    '<div class="m-cell-lbl" style="margin-bottom:4px">ORIGINAL MESSAGE</div>'+
+    '<div class="m-msg">&ldquo;'+(dec.user_message||'—')+'&rdquo;</div>'+
+    '<div class="m-cell-lbl" style="margin-bottom:4px">TRIGGERED RULES</div>'+
+    '<div style="font-size:10px;color:var(--dim)">'+ ((dec.triggered_rules||[]).length===0 ? '— none —' : (dec.triggered_rules||[]).join(', ')) +'</div>'+
+    (d.using_mock ? '<div class="m-warn">&#9888; MOCK DATA &mdash; set CLASPION_VOICE_ENABLED=true for live decisions</div>' : '')
+  );
+}
+
+function showReview() {
+  var d = _S; if (!d) return openModal('REVIEW CLASSIFICATION','<p>No data loaded.</p>');
+  var dec = d.decision || {};
+  var cat = (dec.context_category || dec.original_classification || '—').replace(/_/g,' ');
+  openModal('◈ REVIEW CLASSIFICATION',
+    '<div class="m-info" style="margin-bottom:14px">Review mode allows re-evaluation of context classification. Any reclassification is <strong style="color:var(--c1)">session-only</strong> &mdash; governance rules are never permanently changed.</div>'+
+    '<div class="m-row">'+
+      '<div class="m-cell"><div class="m-cell-lbl">CURRENT CLASSIFICATION</div><div style="font-size:12px;color:var(--c1);letter-spacing:1px;margin-top:4px">'+cat+'</div></div>'+
+      '<div class="m-cell"><div class="m-cell-lbl">REVIEW MODE</div><div style="font-size:12px;margin-top:4px;'+(d.review_mode_enabled?'color:#39ff14':'color:#ff9800')+'">'+(d.review_mode_enabled?'ENABLED':'DISABLED')+'</div></div>'+
+    '</div>'+
+    (!d.review_mode_enabled
+      ? '<div style="padding:10px;background:rgba(255,152,0,.05);border:1px solid rgba(255,152,0,.2);font-size:10px;color:rgba(255,152,0,.8);line-height:1.6">Review mode is not active. To enable:<br><code style="color:#ff9800">CLASPION_REVIEW_MODE_ENABLED=true</code></div>'
+      : '<div class="m-info">Address CLASPION directly in chat:<br><em style="color:var(--c1)">&ldquo;CLASPION, reconsider that &mdash; I was only asking hypothetically.&rdquo;</em></div>'
+    )+
+    (d.using_mock ? '<div class="m-warn">&#9888; MOCK DATA &mdash; live review requires CLASPION_VOICE_ENABLED=true</div>' : '')
+  );
+}
+
+function showEvidence() {
+  var d = _S; if (!d) return openModal('SHOW EVIDENCE','<p>No data loaded.</p>');
+  var dec = d.decision || {};
+  var rl = dec.risk_level || 'LOW';
+  var rc = rl==='HIGH'?'#ff073a':rl==='MEDIUM'?'#ff9800':'#39ff14';
+  openModal('◈ EVIDENCE PACKAGE',
+    '<div class="m-cell-lbl" style="margin-bottom:4px">USER MESSAGE</div>'+
+    '<div class="m-msg">&ldquo;'+(dec.user_message||'—')+'&rdquo;</div>'+
+    '<div class="m-cell-lbl" style="margin-bottom:4px">EVIDENCE SUMMARY</div>'+
+    '<div class="m-reason">'+(dec.evidence||'—')+'</div>'+
+    '<div class="m-row">'+
+      '<div class="m-cell"><div class="m-cell-lbl">CONTEXT</div><div style="font-size:11px;color:var(--c1);margin-top:4px">'+(dec.context_category||'—').replace(/_/g,' ')+'</div></div>'+
+      '<div class="m-cell"><div class="m-cell-lbl">RISK</div><div style="font-size:11px;color:'+rc+';margin-top:4px">'+rl+' ('+(dec.risk_score||0)+'/100)</div></div>'+
+    '</div>'+
+    '<div class="m-cell-lbl" style="margin-bottom:4px">RAW EXCERPT</div>'+
+    '<pre>'+JSON.stringify({decision_id:dec.decision_id,decision_type:dec.decision_type,context_category:dec.context_category,confidence:dec.confidence,risk_level:dec.risk_level,triggered_rules:dec.triggered_rules,surface_mode:dec.surface_mode},null,2)+'</pre>'
+  );
+}
+
+function showAudit() {
+  openModal('◈ AUDIT TRAIL','<div style="color:var(--faint);font-size:10px">Loading&hellip;</div>');
+  fetch('/api/claspion/cockpit/audit',{cache:'no-store'})
+    .then(function(r){return r.ok?r.json():[]})
+    .catch(function(){return []})
+    .then(function(trail) {
+      if (!Array.isArray(trail)) trail = [];
+      var rows = trail.length === 0
+        ? '<div style="color:var(--faint);font-size:10px;padding:10px">No audit records in this session. Records appear when CLASPION explanation/review mode is used.</div>'
+        : trail.map(function(r){
+            return '<div class="m-audit-row">'+
+              '<div style="display:flex;justify-content:space-between;margin-bottom:3px">'+
+                '<span style="font-size:8px;letter-spacing:2px;color:var(--c1)">'+(r.record_type||r.type||'—')+'</span>'+
+                '<span style="font-size:8px;color:var(--faint)">'+new Date(r.timestamp).toLocaleTimeString()+'</span>'+
+              '</div>'+
+              '<div style="font-size:9.5px;color:var(--dim)">'+(r.record_id||r.review_id||'—')+'</div>'+
+              '<div style="font-size:8.5px;color:rgba(57,255,20,.7);margin-top:2px">is_policy_change: '+r.is_policy_change+'</div>'+
+            '</div>';
+          }).join('');
+      q('m-body').innerHTML =
+        '<div style="margin-bottom:10px;font-size:9px;letter-spacing:2px;color:var(--faint)">'+trail.length+' RECORD(S) &middot; SESSION ONLY &middot; NOT PERSISTED</div>'+rows;
+    });
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────
+refresh();
+setInterval(refresh, 6000);
+</script>
+</body>
+</html>

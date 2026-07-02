@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Splendor Memory Management Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f7fa;
+            color: #2d3748;
+            line-height: 1.6;
+        }
+
+        .header {
+            background: #2d3748;
+            color: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .header .subtitle {
+            color: #a0aec0;
+            font-size: 0.875rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .card-header {
+            background: #f7fafc;
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .card-header h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .card-content {
+            padding: 1.5rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: #718096;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .memory-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .memory-item {
+            padding: 1rem;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: between;
+            align-items: flex-start;
+        }
+
+        .memory-item:last-child {
+            border-bottom: none;
+        }
+
+        .memory-content {
+            flex: 1;
+        }
+
+        .memory-text {
+            margin-bottom: 0.5rem;
+            line-height: 1.4;
+        }
+
+        .memory-meta {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.75rem;
+            color: #718096;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+        }
+
+        .badge.pending {
+            background: #fed7d7;
+            color: #c53030;
+        }
+
+        .badge.approved {
+            background: #c6f6d5;
+            color: #2f855a;
+        }
+
+        .badge.rejected {
+            background: #feb2b2;
+            color: #c53030;
+        }
+
+        .badge.grounded {
+            background: #bee3f8;
+            color: #2c5282;
+        }
+
+        .badge.uncertain {
+            background: #feebc8;
+            color: #c05621;
+        }
+
+        .actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-left: 1rem;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .btn.primary {
+            background: #4299e1;
+            color: white;
+        }
+
+        .btn.primary:hover {
+            background: #3182ce;
+        }
+
+        .btn.success {
+            background: #48bb78;
+            color: white;
+        }
+
+        .btn.success:hover {
+            background: #38a169;
+        }
+
+        .btn.danger {
+            background: #f56565;
+            color: white;
+        }
+
+        .btn.danger:hover {
+            background: #e53e3e;
+        }
+
+        .btn.secondary {
+            background: #e2e8f0;
+            color: #4a5568;
+        }
+
+        .btn.secondary:hover {
+            background: #cbd5e0;
+        }
+
+        .search-bar {
+            margin-bottom: 1rem;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            font-size: 0.875rem;
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #e2e8f0;
+            margin-bottom: 1rem;
+        }
+
+        .tab {
+            padding: 0.75rem 1rem;
+            border: none;
+            background: none;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            font-size: 0.875rem;
+        }
+
+        .tab.active {
+            border-bottom-color: #4299e1;
+            color: #4299e1;
+        }
+
+        .uncertainty-warning {
+            background: #fef5e7;
+            border: 1px solid #f6ad55;
+            border-radius: 4px;
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .uncertainty-warning .icon {
+            color: #c05621;
+            margin-right: 0.5rem;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #718096;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>🧠 Splendor Memory Dashboard</h1>
+        <div class="subtitle">Memory Architecture V2.0 • Truth · Safety · We Got Your Back</div>
+    </header>
+
+    <div class="container">
+        <!-- Statistics Overview -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="totalMemories">-</div>
+                <div class="stat-label">Total Memories</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="pendingApproval">-</div>
+                <div class="stat-label">Pending Approval</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="uncertainMemories">-</div>
+                <div class="stat-label">Uncertain Memories</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="activeWorkspaces">-</div>
+                <div class="stat-label">Active Workspaces</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="bindingDecisions">-</div>
+                <div class="stat-label">Binding Decisions</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="memoryConflicts">-</div>
+                <div class="stat-label">Memory Conflicts</div>
+            </div>
+        </div>
+
+        <div class="dashboard-grid">
+            <!-- Memory Review Queue -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>📋 Memory Review Queue</h3>
+                </div>
+                <div class="card-content">
+                    <div class="tabs">
+                        <button class="tab active" onclick="switchTab('pending')">Pending</button>
+                        <button class="tab" onclick="switchTab('uncertain')">Uncertain</button>
+                        <button class="tab" onclick="switchTab('conflicts')">Conflicts</button>
+                    </div>
+                    <div id="reviewQueue" class="memory-list">
+                        <div class="loading">Loading memories...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>📊 Recent Activity</h3>
+                </div>
+                <div class="card-content">
+                    <div id="recentActivity" class="memory-list">
+                        <div class="loading">Loading activity...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Memory Search & Browse -->
+        <div class="card">
+            <div class="card-header">
+                <h3>🔍 Memory Search & Browse</h3>
+            </div>
+            <div class="card-content">
+                <div class="search-bar">
+                    <input type="text"
+                           class="search-input"
+                           placeholder="Search memories by content, category, or type..."
+                           id="searchInput"
+                           onkeyup="searchMemories()">
+                </div>
+                <div class="tabs">
+                    <button class="tab active" onclick="filterMemories('all')">All</button>
+                    <button class="tab" onclick="filterMemories('facts')">Facts</button>
+                    <button class="tab" onclick="filterMemories('preferences')">Preferences</button>
+                    <button class="tab" onclick="filterMemories('reflections')">Reflections</button>
+                    <button class="tab" onclick="filterMemories('decisions')">Decisions</button>
+                </div>
+                <div id="memoryBrowser" class="memory-list">
+                    <div class="loading">Loading memories...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Mock data for demo - replace with actual API calls
+        let currentTab = 'pending';
+        let currentFilter = 'all';
+
+        const mockMemories = [
+            {
+                id: '1',
+                content: 'I prefer dark roast coffee in the morning',
+                category: 'chris.preferences',
+                type: 'user_preference',
+                approval_status: 'pending',
+                confidence_label: 'grounded',
+                provenance: 'USER_STATED',
+                created_at: '2026-05-09T08:30:00Z',
+                uncertainty_reason: null
+            },
+            {
+                id: '2',
+                content: 'Chris prefers direct communication over diplomatic language',
+                category: 'splendor.reflections',
+                type: 'splendor_reflection',
+                approval_status: 'pending',
+                confidence_label: 'inferred',
+                provenance: 'GENERATED',
+                created_at: '2026-05-09T08:25:00Z',
+                uncertainty_reason: 'Memory derived from interpretation or inference'
+            },
+            {
+                id: '3',
+                content: 'I work in Sacramento, California',
+                category: 'chris.personal',
+                type: 'user_fact',
+                approval_status: 'approved',
+                confidence_label: 'grounded',
+                provenance: 'USER_STATED',
+                created_at: '2026-05-08T14:20:00Z',
+                uncertainty_reason: null
+            }
+        ];
+
+        const mockStats = {
+            totalMemories: 127,
+            pendingApproval: 8,
+            uncertainMemories: 3,
+            activeWorkspaces: 2,
+            bindingDecisions: 5,
+            memoryConflicts: 1
+        };
+
+        function initDashboard() {
+            updateStats();
+            loadReviewQueue();
+            loadRecentActivity();
+            loadMemoryBrowser();
+        }
+
+        function updateStats() {
+            document.getElementById('totalMemories').textContent = mockStats.totalMemories;
+            document.getElementById('pendingApproval').textContent = mockStats.pendingApproval;
+            document.getElementById('uncertainMemories').textContent = mockStats.uncertainMemories;
+            document.getElementById('activeWorkspaces').textContent = mockStats.activeWorkspaces;
+            document.getElementById('bindingDecisions').textContent = mockStats.bindingDecisions;
+            document.getElementById('memoryConflicts').textContent = mockStats.memoryConflicts;
+        }
+
+        function loadReviewQueue() {
+            const queue = document.getElementById('reviewQueue');
+            const pendingMemories = mockMemories.filter(m =>
+                currentTab === 'pending' ? m.approval_status === 'pending' :
+                currentTab === 'uncertain' ? m.confidence_label !== 'grounded' :
+                currentTab === 'conflicts' ? false : true
+            );
+
+            queue.innerHTML = pendingMemories.map(memory => `
+                <div class="memory-item">
+                    <div class="memory-content">
+                        ${memory.uncertainty_reason ? `
+                            <div class="uncertainty-warning">
+                                <span class="icon">⚠️</span>
+                                ${memory.uncertainty_reason}
+                            </div>
+                        ` : ''}
+                        <div class="memory-text">${memory.content}</div>
+                        <div class="memory-meta">
+                            <span>Category: ${memory.category}</span>
+                            <span>Type: ${memory.type}</span>
+                            <span>Source: ${memory.provenance}</span>
+                            <span class="badge ${memory.approval_status}">${memory.approval_status}</span>
+                            <span class="badge ${memory.confidence_label === 'grounded' ? 'grounded' : 'uncertain'}">
+                                ${memory.confidence_label}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="actions">
+                        ${memory.approval_status === 'pending' ? `
+                            <button class="btn success" onclick="approveMemory('${memory.id}')">Approve</button>
+                            <button class="btn danger" onclick="rejectMemory('${memory.id}')">Reject</button>
+                        ` : ''}
+                        <button class="btn secondary" onclick="viewMemoryDetails('${memory.id}')">Details</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function loadRecentActivity() {
+            const activity = document.getElementById('recentActivity');
+            activity.innerHTML = `
+                <div class="memory-item">
+                    <div class="memory-content">
+                        <div class="memory-text">Memory approval: "I prefer dark roast coffee"</div>
+                        <div class="memory-meta">
+                            <span>Action: Approved by Chris</span>
+                            <span>2 minutes ago</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="memory-item">
+                    <div class="memory-content">
+                        <div class="memory-text">Reflection created: Communication preferences</div>
+                        <div class="memory-meta">
+                            <span>Action: Generated reflection</span>
+                            <span>15 minutes ago</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="memory-item">
+                    <div class="memory-content">
+                        <div class="memory-text">Workspace updated: Memory Architecture Rebuild</div>
+                        <div class="memory-meta">
+                            <span>Action: Status updated</span>
+                            <span>1 hour ago</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function loadMemoryBrowser() {
+            const browser = document.getElementById('memoryBrowser');
+            const filteredMemories = mockMemories.filter(memory => {
+                if (currentFilter === 'all') return true;
+                if (currentFilter === 'facts') return memory.type.includes('fact');
+                if (currentFilter === 'preferences') return memory.type.includes('preference');
+                if (currentFilter === 'reflections') return memory.type.includes('reflection');
+                if (currentFilter === 'decisions') return memory.category.includes('decision');
+                return true;
+            });
+
+            browser.innerHTML = filteredMemories.map(memory => `
+                <div class="memory-item">
+                    <div class="memory-content">
+                        <div class="memory-text">${memory.content}</div>
+                        <div class="memory-meta">
+                            <span>${memory.category}</span>
+                            <span>${formatDate(memory.created_at)}</span>
+                            <span class="badge ${memory.approval_status}">${memory.approval_status}</span>
+                            <span class="badge ${memory.confidence_label === 'grounded' ? 'grounded' : 'uncertain'}">
+                                ${memory.confidence_label}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="actions">
+                        <button class="btn secondary" onclick="editMemory('${memory.id}')">Edit</button>
+                        <button class="btn danger" onclick="deleteMemory('${memory.id}')">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            loadReviewQueue();
+        }
+
+        function filterMemories(filter) {
+            currentFilter = filter;
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            loadMemoryBrowser();
+        }
+
+        function searchMemories() {
+            const searchTerm = document.getElementById('searchInput').value;
+            // In real implementation, this would call the search API
+            console.log('Searching for:', searchTerm);
+        }
+
+        function approveMemory(id) {
+            if (confirm('Approve this memory? It will become retrievable and trusted.')) {
+                // API call to approve memory
+                console.log('Approving memory:', id);
+                loadReviewQueue();
+                updateStats();
+            }
+        }
+
+        function rejectMemory(id) {
+            const reason = prompt('Why are you rejecting this memory?');
+            if (reason) {
+                // API call to reject memory with reason
+                console.log('Rejecting memory:', id, 'Reason:', reason);
+                loadReviewQueue();
+                updateStats();
+            }
+        }
+
+        function viewMemoryDetails(id) {
+            // Open detailed view modal
+            console.log('Viewing details for memory:', id);
+        }
+
+        function editMemory(id) {
+            // Open edit modal
+            console.log('Editing memory:', id);
+        }
+
+        function deleteMemory(id) {
+            if (confirm('Delete this memory permanently? This will also remove it from Pinecone.')) {
+                // API call to delete memory
+                console.log('Deleting memory:', id);
+                loadMemoryBrowser();
+                updateStats();
+            }
+        }
+
+        function formatDate(dateString) {
+            return new Date(dateString).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        // Initialize dashboard when page loads
+        window.addEventListener('load', initDashboard);
+    </script>
+</body>
+</html>

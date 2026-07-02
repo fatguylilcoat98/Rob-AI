@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Splendor's Consciousness Dashboard</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.2);
+            backdrop-filter: blur(4px);
+        }
+
+        .card h3 {
+            margin-top: 0;
+            color: #667eea;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 10px;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-active {
+            background-color: #28a745;
+            animation: pulse 2s infinite;
+        }
+
+        .status-inactive {
+            background-color: #dc3545;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .metric:last-child {
+            border-bottom: none;
+        }
+
+        .metric-label {
+            font-weight: 600;
+            color: #555;
+        }
+
+        .metric-value {
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background-color: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 5px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+
+        .insights-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .insight-item {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+
+        .insight-meta {
+            font-size: 0.8em;
+            color: #666;
+            margin-top: 8px;
+        }
+
+        .self-analysis {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            grid-column: 1 / -1;
+        }
+
+        .self-analysis h3 {
+            color: white;
+            border-bottom-color: rgba(255,255,255,0.3);
+        }
+
+        .refresh-button {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 15px 20px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: 600;
+            box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+            transition: transform 0.2s ease;
+        }
+
+        .refresh-button:hover {
+            transform: scale(1.05);
+        }
+
+        .loading {
+            text-align: center;
+            color: white;
+            padding: 40px;
+        }
+
+        .error {
+            background-color: #dc3545;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧠 Splendor's Consciousness Dashboard</h1>
+            <p>Real-time self-awareness and metacognitive monitoring</p>
+            <p id="lastUpdate">Last updated: <span>Never</span></p>
+        </div>
+
+        <div id="loading" class="loading">
+            <h3>Loading consciousness data...</h3>
+        </div>
+
+        <div id="error" class="error" style="display: none;">
+            <h3>Error loading dashboard</h3>
+            <p id="errorMessage"></p>
+        </div>
+
+        <div id="dashboard" class="dashboard-grid" style="display: none;">
+            <!-- Dashboard content will be populated here -->
+        </div>
+
+        <button class="refresh-button" onclick="loadDashboard()">
+            🔄 Refresh
+        </button>
+    </div>
+
+    <script>
+        async function loadDashboard() {
+            const loading = document.getElementById('loading');
+            const error = document.getElementById('error');
+            const dashboard = document.getElementById('dashboard');
+            const lastUpdate = document.getElementById('lastUpdate');
+
+            loading.style.display = 'block';
+            error.style.display = 'none';
+            dashboard.style.display = 'none';
+
+            try {
+                const response = await fetch('/api/consciousness/dashboard/overview');
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Unknown error');
+                }
+
+                renderDashboard(data.data);
+                lastUpdate.innerHTML = `Last updated: <span>${new Date().toLocaleString()}</span>`;
+
+                loading.style.display = 'none';
+                dashboard.style.display = 'grid';
+
+            } catch (err) {
+                console.error('Dashboard error:', err);
+                document.getElementById('errorMessage').textContent = err.message;
+                loading.style.display = 'none';
+                error.style.display = 'block';
+            }
+        }
+
+        function renderDashboard(data) {
+            const dashboard = document.getElementById('dashboard');
+
+            // Calculate if consciousness is active (recent activity within 1 hour)
+            const lastActivity = data.performance?.recentActivity?.[0];
+            const isActive = lastActivity &&
+                            new Date() - new Date(lastActivity.timestamp) < 60 * 60 * 1000;
+
+            dashboard.innerHTML = `
+                <div class="card">
+                    <h3>Operational Status</h3>
+                    <div class="metric">
+                        <span class="metric-label">Status</span>
+                        <span class="metric-value">${(data.operational && data.operational.status) || 'UNKNOWN'}</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Why</span>
+                        <span class="metric-value">${(data.operational && data.operational.reason) || '—'}</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Last successful run</span>
+                        <span class="metric-value">${(data.telemetry && data.telemetry.last_successful_run) || 'never'}</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Rows produced (last cycle)</span>
+                        <span class="metric-value">${data.telemetry ? data.telemetry.rows_produced : '—'}</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Total Cycles</span>
+                        <span class="metric-value">${data.currentState.total_cycles || 0}</span>
+                    </div>
+                    <!-- Mood / Energy are hardcoded constants in the current build, NOT
+                         measured signals. Shown as static placeholders so they are not
+                         mistaken for live state (audit Item 3). -->
+                    <div class="metric">
+                        <span class="metric-label">Mood (static placeholder — not measured)</span>
+                        <span class="metric-value">${data.currentState.mood || 'n/a'}</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Energy (static placeholder — not measured)</span>
+                        <span class="metric-value">${Math.round((data.currentState.energy_level || 0) * 100)}%</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>Recent Performance</h3>
+                    <div class="metric">
+                        <span class="metric-label">Activities (24h)</span>
+                        <span class="metric-value">${data.performance.activitySummary.totalActivities || 0}</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Success Rate</span>
+                        <span class="metric-value">${data.performance.activitySummary.successRate || '0%'}</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Most Common Activity</span>
+                        <span class="metric-value">${data.performance.activitySummary.mostCommonActivity || 'None'}</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Recent Insights</span>
+                        <span class="metric-value">${data.recentInsights?.length || 0}</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>Recent Insights</h3>
+                    <div class="insights-list">
+                        ${data.recentInsights?.slice(0, 5).map(insight => `
+                            <div class="insight-item">
+                                <strong>${insight.insight_type}</strong>
+                                <div>${insight.content.substring(0, 200)}${insight.content.length > 200 ? '...' : ''}</div>
+                                <div class="insight-meta">
+                                    ${new Date(insight.created_at).toLocaleString()}
+                                </div>
+                            </div>
+                        `).join('') || '<div class="insight-item">No recent insights</div>'}
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>Micro-Reflections</h3>
+                    <div class="insights-list">
+                        ${data.microReflections?.slice(0, 3).map(reflection => `
+                            <div class="insight-item">
+                                ${reflection.content.substring(0, 150)}${reflection.content.length > 150 ? '...' : ''}
+                                <div class="insight-meta">
+                                    ${new Date(reflection.generated_at).toLocaleString()}
+                                </div>
+                            </div>
+                        `).join('') || '<div class="insight-item">No recent reflections</div>'}
+                    </div>
+                </div>
+
+                <div class="card self-analysis">
+                    <h3>🪞 Self-Analysis</h3>
+                    <div style="line-height: 1.6;">
+                        ${data.selfAnalysis || 'Self-analysis not available'}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Load dashboard on page load
+        loadDashboard();
+
+        // Auto-refresh every 5 minutes
+        setInterval(loadDashboard, 5 * 60 * 1000);
+    </script>
+</body>
+</html>
