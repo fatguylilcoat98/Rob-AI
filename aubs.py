@@ -67,7 +67,7 @@ def cmd_ask(question: str, project: str = None):
 
 
 def cmd_ui():
-    print("Launching AUBS UI on http://0.0.0.0:7860 ...")
+    print("Launching AUBS Knowledge on http://0.0.0.0:7860 ...")
     subprocess.run([sys.executable, str(BASE / "ui.py")])
 
 

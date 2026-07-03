@@ -14,9 +14,9 @@ import chromadb
 from llama_index.core import SimpleDirectoryReader, VectorStoreIndex, StorageContext
 from llama_index.core.node_parser import SentenceSplitter
 from llama_index.vector_stores.chroma import ChromaVectorStore
-from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 
 from config import DATA_DIR, CHROMA_DIR, COLLECTION, MANIFEST, EMBED_MODEL, CHUNK_SIZE, CHUNK_OVERLAP, SUPPORTED_EXTENSIONS, IGNORE_DIRS
+from embeddings import load_embed_model
 from governance import audit
 
 
@@ -117,7 +117,7 @@ def main():
                 print(f"  purged old version: {rel_path(f)}")
 
         print(f"Loading local embedding model: {EMBED_MODEL}")
-        embed_model = HuggingFaceEmbedding(model_name=EMBED_MODEL)
+        embed_model = load_embed_model()
         vector_store = ChromaVectorStore(chroma_collection=collection)
         storage_context = StorageContext.from_defaults(vector_store=vector_store)
         splitter = SentenceSplitter(chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP)

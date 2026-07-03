@@ -13,9 +13,9 @@ from groq import Groq
 from llama_index.core import VectorStoreIndex
 from llama_index.core.vector_stores import MetadataFilters, ExactMatchFilter
 from llama_index.vector_stores.chroma import ChromaVectorStore
-from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 
-from config import CHROMA_DIR, COLLECTION, MEMORY_FILE, EMBED_MODEL, TOP_K, MEMORY_TURNS, GROQ_API_KEY, GROQ_MODEL, LOCAL_ONLY, OLLAMA_URL, OLLAMA_MODEL, MIN_SCORE
+from config import CHROMA_DIR, COLLECTION, MEMORY_FILE, TOP_K, MEMORY_TURNS, GROQ_API_KEY, GROQ_MODEL, LOCAL_ONLY, OLLAMA_URL, OLLAMA_MODEL, MIN_SCORE
+from embeddings import load_embed_model
 from prompts import AUBS_SYSTEM_PROMPT, build_query_prompt, build_memory_prompt
 from governance import audit, retrieval_grade, source_contract_text
 
@@ -35,7 +35,7 @@ class AubsEngine:
         self.memory_file.touch(exist_ok=True)
 
         logger.info("Loading embedding model (CPU)...")
-        self.embed_model = HuggingFaceEmbedding(model_name=EMBED_MODEL)
+        self.embed_model = load_embed_model()
         logger.info("Connecting to knowledge base (Chroma)...")
         client = chromadb.PersistentClient(path=str(CHROMA_DIR))
         self.collection = client.get_or_create_collection(COLLECTION)
