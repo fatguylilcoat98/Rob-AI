@@ -151,12 +151,41 @@ def tail_audit(lines=40):
         return f"Audit read error: {e}"
 
 
-with gr.Blocks(title="AUBS Knowledge", theme=gr.themes.Soft()) as demo:
+# One OS identity: emerald on near-black, matching AUBS Mission Control.
+FORCE_DARK_JS = """
+() => {
+  const url = new URL(window.location);
+  if (url.searchParams.get('__theme') !== 'dark') {
+    url.searchParams.set('__theme', 'dark');
+    window.location.replace(url);
+  }
+}
+"""
+
+AUBS_CSS = """
+body, .gradio-container { background: #050a08 !important; }
+.gradio-container { max-width: 960px !important; width: 100% !important; margin: 0 auto !important; padding: 8px 12px !important; box-sizing: border-box !important; }
+html, body { overflow-x: hidden !important; }
+#aubs-header h1 { color: #4ade80 !important; letter-spacing: 2px; text-shadow: 0 0 18px rgba(74,222,128,.3); }
+#aubs-header em { color: #8fa89a; }
+footer { display: none !important; }
+"""
+
+THEME = gr.themes.Soft(primary_hue="green", neutral_hue="zinc").set(
+    body_background_fill_dark="#050a08",
+    background_fill_primary_dark="#0b1510",
+    background_fill_secondary_dark="#080f0c",
+    border_color_primary_dark="#1d3a2a",
+    button_primary_background_fill_dark="linear-gradient(135deg, #16a34a, #22c55e)",
+    button_primary_text_color_dark="#04120a",
+)
+
+with gr.Blocks(title="AUBS Knowledge", theme=THEME, js=FORCE_DARK_JS, css=AUBS_CSS) as demo:
     gr.Markdown("""
     # AUBS Knowledge
     **Ask your own library — every answer says where it came from and how sure it is.**
     *Truth · Safety · We Got Your Back*
-    """)
+    """, elem_id="aubs-header")
     with gr.Tabs():
         with gr.TabItem("Ask"):
             project_dd = gr.Dropdown(choices=list_projects(), value="All", label="Scope to project")
