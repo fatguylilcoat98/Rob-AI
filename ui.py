@@ -1,4 +1,9 @@
-"""AUBS v2.0 Gradio UI — chat, ingest, status, source contract."""
+"""AUBS Knowledge Spine — Gradio UI.
+
+User-facing surface of the knowledge subsystem (internally: aubs-rag).
+Ask · Add Knowledge · Status, plus an Admin / Debug tab that carries the
+raw retrieval detail the old RAG screen used to show.
+"""
 import os
 import subprocess
 import sys
@@ -11,6 +16,21 @@ from config import DATA_DIR, MEMORY_FILE, AUDIT_LOG
 
 engine = AubsEngine()
 NOTES_DIR = DATA_DIR / "personal_notes"
+
+FOOTER = "---\n*Truth · Safety · We Got Your Back — The Good Neighbor Guard*"
+
+# Honest privacy-lane labels. Never claim "local" unless the lane proves it.
+LANE_LABELS = {
+    "Groq": "Cloud-assisted (Groq)",
+    "local (Ollama)": "Local (Ollama)",
+    "local fallback (Ollama)": "Local fallback (Ollama)",
+    "no-generation / empty-kb": "Local (no generation — empty library)",
+    "error": "Unavailable (both lanes failed)",
+}
+
+
+def lane_label(lane: str) -> str:
+    return LANE_LABELS.get(lane, lane)
 
 
 def list_projects():
@@ -29,9 +49,8 @@ def respond(message, history, project):
     sources_md = "\n".join(f"- {s}" for s in result["sources"]) or "- none"
     response_text = (
         f"{result['answer']}\n\n---\n"
-        f"**Lane:** {result['lane']} | **Retrieval:** {grade.get('grade')} "
-        f"({grade.get('reason')}) | **Project:** {result['project_filter']} | "
-        f"**Memory turns:** {result.get('memory_turns_used', 0)}\n\n"
+        f"**Privacy lane:** {lane_label(result['lane'])} | "
+        f"**Evidence:** {grade.get('grade')} | **Project:** {result['project_filter']}\n\n"
         f"**Sources:**\n{sources_md}"
     )
     history = history + [{"role": "user", "content": message}, {"role": "assistant", "content": response_text}]
@@ -53,7 +72,7 @@ def save_as_note(history):
     NOTES_DIR.mkdir(parents=True, exist_ok=True)
     filename = NOTES_DIR / f"aubs_captured_{datetime.now().strftime('%Y%m%d-%H%M%S')}.md"
     filename.write_text(f"# AUBS Captured Exchange — {datetime.now().strftime('%Y-%m-%d %H:%M')}\n\n**Question:** {last_q}\n\n**Answer:**\n{last_a}\n", encoding="utf-8")
-    return f"Saved to {filename.name}. Click Run Ingest to make it searchable."
+    return f"Saved to {filename.name}. Click Add to Library to make it searchable."
 
 
 def run_ingest_from_ui():
@@ -67,9 +86,7 @@ def get_status():
             f"Knowledge chunks: {engine.collection.count()}\n"
             f"Memory entries: {len(MEMORY_FILE.read_text(encoding='utf-8').splitlines()) if MEMORY_FILE.exists() else 0}\n"
             f"Audit entries: {len(AUDIT_LOG.read_text(encoding='utf-8').splitlines()) if AUDIT_LOG.exists() else 0}\n"
-            f"Generation lane: {'LOCAL ONLY (Ollama)' if engine.local_only else 'Groq primary + Ollama fallback'}\n"
-            f"Groq model: {engine.groq_model}\n"
-            f"Ollama model: {engine.ollama_model}\n"
+            f"Generation lane: {'Local only (Ollama)' if engine.local_only else 'Cloud-assisted (Groq) with local fallback (Ollama)'}\n"
             f"Projects: {', '.join(list_projects()[1:]) or 'none yet'}\n"
             f"Status: Source contract active — Truth · Safety · We Got Your Back"
         )
@@ -77,36 +94,75 @@ def get_status():
         return f"Status error: {e}"
 
 
-with gr.Blocks(title="AUBS v2.0 — Source Contract", theme=gr.themes.Soft()) as demo:
+# ── Admin / Debug — the old RAG screen's raw detail lives here now ──
+
+def debug_ask(message, project):
+    if not message or not message.strip():
+        return "Enter a question first."
+    proj = None if project in ("All", "", None) else project
+    result = engine.ask(message.strip(), project=proj)
+    grade = result.get("retrieval_grade", {})
+    sources = "\n".join(f"  - {s}" for s in result["sources"]) or "  - none"
+    return (
+        f"internal lane: {result['lane']}\n"
+        f"retrieval_grade: {grade.get('grade')} ({grade.get('reason')})\n"
+        f"top_score: {grade.get('top_score')} | usable_chunks: {grade.get('usable_chunks')}\n"
+        f"memory_turns_used: {result.get('memory_turns_used', 0)}\n"
+        f"project_filter: {result['project_filter']}\n"
+        f"sources:\n{sources}\n\n"
+        f"answer:\n{result['answer']}"
+    )
+
+
+def tail_audit(lines=40):
+    try:
+        if not AUDIT_LOG.exists():
+            return "No audit entries yet."
+        return "\n".join(AUDIT_LOG.read_text(encoding="utf-8").splitlines()[-int(lines):])
+    except Exception as e:
+        return f"Audit read error: {e}"
+
+
+with gr.Blocks(title="AUBS Knowledge Spine", theme=gr.themes.Soft()) as demo:
     gr.Markdown("""
-    # AUBS v2.0 — Source-Contract Beast
-    **Your knowledge. Your hardware. Your governed retrieval spine.**  
+    # AUBS Knowledge Spine
+    **Your knowledge. Your hardware. Answers with sources, on your terms.**
     *Truth · Safety · We Got Your Back*
     """)
     with gr.Tabs():
-        with gr.TabItem("Chat"):
-            project_dd = gr.Dropdown(choices=list_projects(), value="All", label="Scope retrieval to project")
-            chatbot = gr.Chatbot(label="AUBS", height=520, type="messages")
-            msg = gr.Textbox(placeholder="Ask from your knowledge base... phone mic works here", label="Your question", lines=2)
+        with gr.TabItem("Ask"):
+            project_dd = gr.Dropdown(choices=list_projects(), value="All", label="Scope to project")
+            chatbot = gr.Chatbot(label="Knowledge Spine", height=520, type="messages")
+            msg = gr.Textbox(placeholder="Ask your knowledge base... phone mic works here", label="Your question", lines=2)
             with gr.Row():
-                submit = gr.Button("Send", variant="primary")
+                submit = gr.Button("Ask", variant="primary")
                 save_btn = gr.Button("Save exchange as note")
-                clear = gr.Button("Clear chat")
+                clear = gr.Button("Clear")
             capture_status = gr.Textbox(label="Capture status", interactive=False)
             submit.click(respond, [msg, chatbot, project_dd], [chatbot, msg, project_dd])
             msg.submit(respond, [msg, chatbot, project_dd], [chatbot, msg, project_dd])
             save_btn.click(save_as_note, [chatbot], capture_status)
             clear.click(lambda: [], None, chatbot, queue=False)
-        with gr.TabItem("Ingest"):
-            gr.Markdown("Drop files into `data/` folders, then click ingest. Changed/deleted files are handled cleanly.")
-            ingest_btn = gr.Button("Run Ingest", variant="primary")
-            ingest_output = gr.Textbox(label="Ingest output", lines=16, interactive=False)
+        with gr.TabItem("Add Knowledge"):
+            gr.Markdown("Drop files into `data/` folders, then click below. Changed and deleted files are handled cleanly.")
+            ingest_btn = gr.Button("Add to Library", variant="primary")
+            ingest_output = gr.Textbox(label="Library update log", lines=16, interactive=False)
             ingest_btn.click(run_ingest_from_ui, outputs=ingest_output)
         with gr.TabItem("Status"):
-            status_box = gr.Textbox(label="AUBS Status", lines=10, interactive=False)
+            status_box = gr.Textbox(label="Knowledge Spine status", lines=10, interactive=False)
             refresh_btn = gr.Button("Refresh Status")
             refresh_btn.click(get_status, outputs=status_box)
-    gr.Markdown("---\n*AUBS v2.0 — source contract, audit trail, local retrieval spine.*")
+        with gr.TabItem("Admin / Debug"):
+            gr.Markdown("Operator view — raw retrieval internals (the old RAG screen). Not the product; the product is the Ask tab.")
+            dbg_project = gr.Dropdown(choices=list_projects(), value="All", label="Project filter")
+            dbg_q = gr.Textbox(label="Test question", lines=2)
+            dbg_btn = gr.Button("Run retrieval probe")
+            dbg_out = gr.Textbox(label="Raw engine output", lines=18, interactive=False)
+            dbg_btn.click(debug_ask, [dbg_q, dbg_project], dbg_out)
+            audit_btn = gr.Button("Tail audit log")
+            audit_out = gr.Textbox(label="aubs_audit.jsonl (last 40)", lines=12, interactive=False)
+            audit_btn.click(tail_audit, outputs=audit_out)
+    gr.Markdown(FOOTER)
 
 if __name__ == "__main__":
     auth_env = os.getenv("GRADIO_AUTH", "")
